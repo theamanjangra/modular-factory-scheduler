@@ -1,0 +1,29 @@
+
+# Google App Engine Configuration for Modular Factory
+# Runtime: Node.js 20 (LTS)
+runtime: nodejs20
+
+# Service Name (Optional, defaults to 'default')
+# service: modular-factory
+
+# Standard Environment Scaling (Automatic)
+instance_class: F1
+automatic_scaling:
+  min_idle_instances: 0
+  max_idle_instances: 1 # Cost saving for demo
+  max_instances: 1 # Limit max instances
+  min_pending_latency: 3000ms
+  max_pending_latency: automatic
+
+# Environment Variables
+env_variables:
+  NODE_ENV: 'production'
+  PORT: '8080' # App Engine passes PORT, but good to have default
+  # Add other env vars here (e.g., DATABASE_URL) if needed, 
+  # but for this demo using in-memory/Excel logic, it's fine.
+
+# Ignore explicit files during upload (handled by .gcloudignore usually, but defining handlers is good)
+handlers:
+  - url: /.*
+    script: auto
+    secure: always

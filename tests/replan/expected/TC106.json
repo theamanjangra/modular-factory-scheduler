@@ -1,0 +1,12 @@
+{
+    "id": "TC106",
+    "expectedStatus": 200,
+    "invariants": [
+        "no_overlaps",
+        "valid_times",
+        "prereqs_respected",
+        "wait_task_cascade",
+        "diff_minimal"
+    ],
+    "notes": "Auto-generated placeholder. Run oracle to compute expected values for ground_truth cases."
+}

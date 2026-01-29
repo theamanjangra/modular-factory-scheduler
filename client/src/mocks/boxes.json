@@ -1,0 +1,142 @@
+[
+    {
+        "serial": "BOX-2500",
+        "attributes": {
+            "Length": 70,
+            "Width": 12,
+            "Roof SqFt": 924,
+            "Windows": 12,
+            "Doors": 2,
+            "Plumbing Fixtures": 3,
+            "Electrical Drops": 14
+        },
+        "totalLaborHours": 100.8,
+        "productionRate": 1.59
+    },
+    {
+        "serial": "BOX-2501",
+        "attributes": {
+            "Length": 66,
+            "Width": 12,
+            "Roof SqFt": 871,
+            "Windows": 5,
+            "Doors": 1,
+            "Plumbing Fixtures": 2,
+            "Electrical Drops": 16
+        },
+        "totalLaborHours": 76.3,
+        "productionRate": 2.1
+    },
+    {
+        "serial": "BOX-2502",
+        "attributes": {
+            "Length": 66,
+            "Width": 14,
+            "Roof SqFt": 1016,
+            "Windows": 6,
+            "Doors": 3,
+            "Plumbing Fixtures": 3,
+            "Electrical Drops": 15
+        },
+        "totalLaborHours": 91.6,
+        "productionRate": 1.75
+    },
+    {
+        "serial": "BOX-2503",
+        "attributes": {
+            "Length": 53,
+            "Width": 14,
+            "Roof SqFt": 816,
+            "Windows": 9,
+            "Doors": 2,
+            "Plumbing Fixtures": 4,
+            "Electrical Drops": 28
+        },
+        "totalLaborHours": 94.1,
+        "productionRate": 1.7
+    },
+    {
+        "serial": "BOX-2504",
+        "attributes": {
+            "Length": 45,
+            "Width": 13,
+            "Roof SqFt": 643,
+            "Windows": 9,
+            "Doors": 1,
+            "Plumbing Fixtures": 3,
+            "Electrical Drops": 15
+        },
+        "totalLaborHours": 76.9,
+        "productionRate": 2.08
+    },
+    {
+        "serial": "BOX-2505",
+        "attributes": {
+            "Length": 51,
+            "Width": 13,
+            "Roof SqFt": 729,
+            "Windows": 4,
+            "Doors": 2,
+            "Plumbing Fixtures": 5,
+            "Electrical Drops": 16
+        },
+        "totalLaborHours": 79,
+        "productionRate": 2.03
+    },
+    {
+        "serial": "BOX-2506",
+        "attributes": {
+            "Length": 65,
+            "Width": 12,
+            "Roof SqFt": 858,
+            "Windows": 4,
+            "Doors": 2,
+            "Plumbing Fixtures": 5,
+            "Electrical Drops": 22
+        },
+        "totalLaborHours": 87.9,
+        "productionRate": 1.82
+    },
+    {
+        "serial": "BOX-2507",
+        "attributes": {
+            "Length": 50,
+            "Width": 15,
+            "Roof SqFt": 825,
+            "Windows": 6,
+            "Doors": 3,
+            "Plumbing Fixtures": 2,
+            "Electrical Drops": 30
+        },
+        "totalLaborHours": 80.8,
+        "productionRate": 1.98
+    },
+    {
+        "serial": "BOX-2508",
+        "attributes": {
+            "Length": 47,
+            "Width": 15,
+            "Roof SqFt": 775,
+            "Windows": 11,
+            "Doors": 2,
+            "Plumbing Fixtures": 2,
+            "Electrical Drops": 24
+        },
+        "totalLaborHours": 87.5,
+        "productionRate": 1.83
+    },
+    {
+        "serial": "BOX-2509",
+        "attributes": {
+            "Length": 46,
+            "Width": 12,
+            "Roof SqFt": 607,
+            "Windows": 5,
+            "Doors": 2,
+            "Plumbing Fixtures": 3,
+            "Electrical Drops": 11
+        },
+        "totalLaborHours": 65.9,
+        "productionRate": 2.43
+    }
+]

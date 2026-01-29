@@ -1,0 +1,93 @@
+{
+    "description": "Multi-shift test - Violation Scenarios (Tests shiftCompletionPreference constraint handling)",
+    "notes": {
+        "t1": "mustCompleteWithinShift - Small task, should complete in shift1",
+        "t2": "mustCompleteWithinShift - Large task, may not complete in shift1 (potential violation)",
+        "t3": "prefersCompleteWithinShift - Medium task, may span shifts (warning expected)",
+        "t4": "doesNotMatter - Can freely span shifts",
+        "t5": "mustCompleteWithinShift - Depends on t4, may start late (potential not_started violation)"
+    },
+    "shift1": {
+        "shiftId": "day_shift",
+        "productionRate": 0.6,
+        "shiftInterval": {
+            "start": "07:00",
+            "end": "13:00"
+        }
+    },
+    "shift2": {
+        "shiftId": "evening_shift",
+        "productionRate": 0.4,
+        "shiftInterval": {
+            "start": "13:00",
+            "end": "19:00"
+        }
+    },
+    "tasks": [
+        {
+            "taskId": "t1",
+            "name": "Quick Setup Task",
+            "estimatedTotalLaborHours": 2,
+            "estimatedRemainingLaborHours": 2,
+            "minWorkers": 1,
+            "maxWorkers": 2,
+            "shiftCompletionPreference": "mustCompleteWithinShift"
+        },
+        {
+            "taskId": "t2",
+            "name": "Large Critical Task",
+            "estimatedTotalLaborHours": 15,
+            "estimatedRemainingLaborHours": 15,
+            "minWorkers": 2,
+            "maxWorkers": 4,
+            "shiftCompletionPreference": "mustCompleteWithinShift"
+        },
+        {
+            "taskId": "t3",
+            "name": "Medium Preferred Task",
+            "estimatedTotalLaborHours": 8,
+            "estimatedRemainingLaborHours": 8,
+            "minWorkers": 1,
+            "maxWorkers": 4,
+            "shiftCompletionPreference": "prefersCompleteWithinShift"
+        },
+        {
+            "taskId": "t4",
+            "name": "Flexible Long Task",
+            "estimatedTotalLaborHours": 20,
+            "estimatedRemainingLaborHours": 20,
+            "minWorkers": 2,
+            "maxWorkers": 8,
+            "shiftCompletionPreference": "doesNotMatter"
+        },
+        {
+            "taskId": "t5",
+            "name": "Late Dependency Task",
+            "estimatedTotalLaborHours": 4,
+            "estimatedRemainingLaborHours": 4,
+            "minWorkers": 1,
+            "maxWorkers": 2,
+            "prerequisiteTaskIds": ["t4"],
+            "shiftCompletionPreference": "mustCompleteWithinShift"
+        },
+        {
+            "taskId": "t6",
+            "name": "Standard Task A",
+            "estimatedTotalLaborHours": 6,
+            "estimatedRemainingLaborHours": 6,
+            "minWorkers": 1,
+            "maxWorkers": 4,
+            "shiftCompletionPreference": "doesNotMatter"
+        },
+        {
+            "taskId": "t7",
+            "name": "Standard Task B",
+            "estimatedTotalLaborHours": 5,
+            "estimatedRemainingLaborHours": 5,
+            "minWorkers": 1,
+            "maxWorkers": 4,
+            "prerequisiteTaskIds": ["t6"],
+            "shiftCompletionPreference": "prefersCompleteWithinShift"
+        }
+    ]
+}

@@ -1,0 +1,77 @@
+{
+    "id": "TC064",
+    "name": "Worker late by 2hr",
+    "description": "Worker arrives 2 hours late",
+    "category": "worker_late",
+    "input": {
+        "currentTime": "2026-01-22T07:00:00.000Z",
+        "updates": [],
+        "workerUpdates": [
+            {
+                "workerId": "w_1",
+                "availability": {
+                    "startTime": "2026-01-22T09:00:00.000Z",
+                    "endTime": "2026-01-22T21:00:00.000Z"
+                }
+            }
+        ],
+        "tasks": [
+            {
+                "taskId": "t_1",
+                "name": "Task t_1",
+                "estimatedTotalLaborHours": 4,
+                "estimatedRemainingLaborHours": 4,
+                "minWorkers": 1,
+                "maxWorkers": 3,
+                "taskType": "default",
+                "requiredSkills": [
+                    "general"
+                ]
+            }
+        ],
+        "workers": [
+            {
+                "workerId": "w_1",
+                "name": "Worker 1",
+                "availability": {
+                    "startTime": "2026-01-22T07:00:00.000Z",
+                    "endTime": "2026-01-22T21:00:00.000Z"
+                },
+                "skills": [
+                    "general"
+                ]
+            },
+            {
+                "workerId": "w_2",
+                "name": "Worker 2",
+                "availability": {
+                    "startTime": "2026-01-22T07:00:00.000Z",
+                    "endTime": "2026-01-22T21:00:00.000Z"
+                },
+                "skills": [
+                    "general"
+                ]
+            }
+        ],
+        "originalAssignments": [
+            {
+                "workerId": "w_1",
+                "taskId": "t_1",
+                "startDate": "2026-01-22T07:00:00.000Z",
+                "endDate": "2026-01-22T09:00:00.000Z"
+            },
+            {
+                "workerId": "w_2",
+                "taskId": "t_1",
+                "startDate": "2026-01-22T07:00:00.000Z",
+                "endDate": "2026-01-22T09:00:00.000Z"
+            }
+        ]
+    },
+    "expectedStatus": 200,
+    "invariants": [
+        "no_overlaps",
+        "valid_times",
+        "worker_availability_respected"
+    ]
+}

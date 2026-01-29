@@ -1,0 +1,98 @@
+[
+  {
+    "taskId": "T-1",
+    "name": "Wall Batt insulation",
+    "estimatedRemainingLaborHours": 5,
+    "minWorkers": 1,
+    "maxWorkers": 2,
+    "prerequisiteTaskId": null
+  },
+  {
+    "taskId": "T-2",
+    "name": "Baffels and Blown In Insulation",
+    "estimatedRemainingLaborHours": 5.5,
+    "minWorkers": 2,
+    "maxWorkers": 2,
+    "prerequisiteTaskId": "T-3"
+  },
+  {
+    "taskId": "T-3",
+    "name": "Ceiling Rim Insulation",
+    "estimatedRemainingLaborHours": 4,
+    "minWorkers": 1,
+    "maxWorkers": 8,
+    "prerequisiteTaskId": null
+  },
+  {
+    "taskId": "T-4",
+    "name": "Complete Drywall Back Panel",
+    "estimatedRemainingLaborHours": 13.5,
+    "minWorkers": 1,
+    "maxWorkers": 8,
+    "prerequisiteTaskId": "T-1"
+  },
+  {
+    "taskId": "T-5",
+    "name": "Complete Exterior OSB",
+    "estimatedRemainingLaborHours": 20,
+    "minWorkers": 2,
+    "maxWorkers": 8,
+    "prerequisiteTaskId": "T-7"
+  },
+  {
+    "taskId": "T-6",
+    "name": "Complete Roof 5/8\" OSB",
+    "estimatedRemainingLaborHours": 13,
+    "minWorkers": 2,
+    "maxWorkers": 8,
+    "prerequisiteTaskId": "T-5"
+  },
+  {
+    "taskId": "T-7",
+    "name": "Complete Exterior Fire Wall",
+    "estimatedRemainingLaborHours": 10,
+    "minWorkers": 2,
+    "maxWorkers": 8,
+    "prerequisiteTaskId": null
+  },
+  {
+    "taskId": "T-8",
+    "name": "Interior Tape / Mud 1st Coat",
+    "estimatedRemainingLaborHours": 33,
+    "minWorkers": 1,
+    "maxWorkers": 8,
+    "prerequisiteTaskId": null
+  },
+  {
+    "taskId": "T-9",
+    "name": "Interior Tape / Mud 2nd Coat",
+    "estimatedRemainingLaborHours": 16,
+    "minWorkers": 1,
+    "maxWorkers": 8,
+    "prerequisiteTaskId": "T-8"
+  },
+  {
+    "taskId": "T-10",
+    "name": "Complete Exterior R-Max",
+    "estimatedRemainingLaborHours": 10.5,
+    "minWorkers": 1,
+    "maxWorkers": 8,
+    "prerequisiteTaskId": null
+  },
+  {
+    "taskId": "T-11",
+    "name": "Final sand of drywall",
+    "estimatedRemainingLaborHours": 2,
+    "minWorkers": 1,
+    "maxWorkers": 8,
+    "prerequisiteTaskId": null
+  },
+  {
+    "taskId": "T-12",
+    "name": "Tape and install windows",
+    "estimatedRemainingLaborHours": 5.25,
+    "minWorkers": 2,
+    "maxWorkers": 4,
+    "prerequisiteTaskId": null
+  }
+]

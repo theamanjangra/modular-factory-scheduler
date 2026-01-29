@@ -1,0 +1,290 @@
+[
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T08:00:00.000Z",
+    "endDate": "2025-01-01T08:30:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T08:00:00.000Z",
+    "endDate": "2025-01-01T08:30:00.000Z"
+  },
+  {
+    "workerId": "M1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T08:00:00.000Z",
+    "endDate": "2025-01-01T08:30:00.000Z"
+  },
+  {
+    "workerId": "M2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T08:00:00.000Z",
+    "endDate": "2025-01-01T08:30:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T08:30:00.000Z",
+    "endDate": "2025-01-01T09:00:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T08:30:00.000Z",
+    "endDate": "2025-01-01T09:00:00.000Z"
+  },
+  {
+    "workerId": "M1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T08:30:00.000Z",
+    "endDate": "2025-01-01T09:00:00.000Z"
+  },
+  {
+    "workerId": "M2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T08:30:00.000Z",
+    "endDate": "2025-01-01T09:00:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T09:00:00.000Z",
+    "endDate": "2025-01-01T09:30:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T09:00:00.000Z",
+    "endDate": "2025-01-01T09:30:00.000Z"
+  },
+  {
+    "workerId": "M1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T09:00:00.000Z",
+    "endDate": "2025-01-01T09:30:00.000Z"
+  },
+  {
+    "workerId": "M2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T09:00:00.000Z",
+    "endDate": "2025-01-01T09:30:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T09:30:00.000Z",
+    "endDate": "2025-01-01T10:00:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T09:30:00.000Z",
+    "endDate": "2025-01-01T10:00:00.000Z"
+  },
+  {
+    "workerId": "M1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T09:30:00.000Z",
+    "endDate": "2025-01-01T10:00:00.000Z"
+  },
+  {
+    "workerId": "M2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T09:30:00.000Z",
+    "endDate": "2025-01-01T10:00:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T10:00:00.000Z",
+    "endDate": "2025-01-01T10:30:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T10:00:00.000Z",
+    "endDate": "2025-01-01T10:30:00.000Z"
+  },
+  {
+    "workerId": "M1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T10:00:00.000Z",
+    "endDate": "2025-01-01T10:30:00.000Z"
+  },
+  {
+    "workerId": "M2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T10:00:00.000Z",
+    "endDate": "2025-01-01T10:30:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T10:30:00.000Z",
+    "endDate": "2025-01-01T11:00:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T10:30:00.000Z",
+    "endDate": "2025-01-01T11:00:00.000Z"
+  },
+  {
+    "workerId": "M1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T10:30:00.000Z",
+    "endDate": "2025-01-01T11:00:00.000Z"
+  },
+  {
+    "workerId": "M2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T10:30:00.000Z",
+    "endDate": "2025-01-01T11:00:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T11:00:00.000Z",
+    "endDate": "2025-01-01T11:30:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T11:00:00.000Z",
+    "endDate": "2025-01-01T11:30:00.000Z"
+  },
+  {
+    "workerId": "M1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T11:00:00.000Z",
+    "endDate": "2025-01-01T11:30:00.000Z"
+  },
+  {
+    "workerId": "M2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T11:00:00.000Z",
+    "endDate": "2025-01-01T11:30:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T11:30:00.000Z",
+    "endDate": "2025-01-01T12:00:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T11:30:00.000Z",
+    "endDate": "2025-01-01T12:00:00.000Z"
+  },
+  {
+    "workerId": "M1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T11:30:00.000Z",
+    "endDate": "2025-01-01T12:00:00.000Z"
+  },
+  {
+    "workerId": "M2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T11:30:00.000Z",
+    "endDate": "2025-01-01T12:00:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T12:00:00.000Z",
+    "endDate": "2025-01-01T12:30:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T12:00:00.000Z",
+    "endDate": "2025-01-01T12:30:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T12:30:00.000Z",
+    "endDate": "2025-01-01T13:00:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T12:30:00.000Z",
+    "endDate": "2025-01-01T13:00:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T13:00:00.000Z",
+    "endDate": "2025-01-01T13:30:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T13:00:00.000Z",
+    "endDate": "2025-01-01T13:30:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T13:30:00.000Z",
+    "endDate": "2025-01-01T14:00:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T13:30:00.000Z",
+    "endDate": "2025-01-01T14:00:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T14:00:00.000Z",
+    "endDate": "2025-01-01T14:30:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T14:00:00.000Z",
+    "endDate": "2025-01-01T14:30:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T14:30:00.000Z",
+    "endDate": "2025-01-01T15:00:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T14:30:00.000Z",
+    "endDate": "2025-01-01T15:00:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T15:00:00.000Z",
+    "endDate": "2025-01-01T15:30:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "interior-tape-mud-1st-coat",
+    "startDate": "2025-01-01T15:00:00.000Z",
+    "endDate": "2025-01-01T15:30:00.000Z"
+  },
+  {
+    "workerId": "A1",
+    "taskId": "complete-exterior-r-max",
+    "startDate": "2025-01-01T15:30:00.000Z",
+    "endDate": "2025-01-01T16:00:00.000Z"
+  },
+  {
+    "workerId": "A2",
+    "taskId": "complete-exterior-r-max",
+    "startDate": "2025-01-01T15:30:00.000Z",
+    "endDate": "2025-01-01T16:00:00.000Z"
+  }
+]

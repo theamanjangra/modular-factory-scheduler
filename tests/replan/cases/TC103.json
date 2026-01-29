@@ -1,0 +1,33 @@
+{
+    "id": "TC103",
+    "name": "Missing workers for ephemeral plan",
+    "description": "Ephemeral plan without workers definition",
+    "category": "invalid_input",
+    "input": {
+        "currentTime": "2026-01-22T07:00:00.000Z",
+        "updates": [
+            {
+                "taskId": "t_1",
+                "laborHoursRemaining": 4
+            }
+        ],
+        "tasks": [
+            {
+                "taskId": "t_1",
+                "name": "Task t_1",
+                "estimatedTotalLaborHours": 4,
+                "estimatedRemainingLaborHours": 4,
+                "minWorkers": 1,
+                "maxWorkers": 3,
+                "taskType": "default",
+                "requiredSkills": [
+                    "general"
+                ]
+            }
+        ],
+        "originalAssignments": []
+    },
+    "expectedStatus": 400,
+    "expectedErrorContains": "workers",
+    "invariants": []
+}

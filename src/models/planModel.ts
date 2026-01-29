@@ -1,0 +1,40 @@
+import { prisma } from '../config/db';
+
+export interface PlanWithAssignments {
+    id: string;
+    name: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    assignments: {
+        id: string;
+        workerId: string;
+        taskId: string;
+        shiftId: string | null;
+        startTime: Date;
+        endTime: Date;
+    }[];
+}
+
+/** Fetch a plan with all its assignments */
+export const getPlanById = async (planId: string): Promise<PlanWithAssignments | null> => {
+    return prisma.plan.findUnique({
+        where: { id: planId },
+        include: { assignments: { orderBy: { startTime: 'asc' } } }
+    });
+};
+
+/** Fetch assignments still active at or after a given time */
+export const getActiveAssignments = async (planId: string, afterTime: Date) => {
+    return prisma.workerTaskAssignment.findMany({
+        where: { planId, endTime: { gte: afterTime } },
+        orderBy: { startTime: 'asc' }
+    });
+};
+
+/** Fetch a plan with all its assignments AND snapshot */
+export const getPlanWithSnapshot = async (planId: string) => {
+    return prisma.plan.findUnique({
+        where: { id: planId },
+        include: { assignments: { orderBy: { startTime: 'asc' } } }
+    });
+};

@@ -1,0 +1,79 @@
+{
+    "id": "TC112",
+    "name": "Circular dependency detection",
+    "description": "Tasks with potential circular dependency (should be rejected or handled)",
+    "category": "edge_case",
+    "input": {
+        "currentTime": "2026-01-22T07:00:00.000Z",
+        "updates": [
+            {
+                "taskId": "t_1",
+                "laborHoursRemaining": 5
+            }
+        ],
+        "tasks": [
+            {
+                "taskId": "t_1",
+                "name": "Task 1",
+                "estimatedTotalLaborHours": 4,
+                "estimatedRemainingLaborHours": 4,
+                "minWorkers": 1,
+                "maxWorkers": 2,
+                "prerequisiteTaskIds": [
+                    "t_3"
+                ]
+            },
+            {
+                "taskId": "t_2",
+                "name": "Task 2",
+                "estimatedTotalLaborHours": 3,
+                "estimatedRemainingLaborHours": 3,
+                "minWorkers": 1,
+                "maxWorkers": 2,
+                "prerequisiteTaskIds": [
+                    "t_1"
+                ]
+            },
+            {
+                "taskId": "t_3",
+                "name": "Task 3",
+                "estimatedTotalLaborHours": 3,
+                "estimatedRemainingLaborHours": 3,
+                "minWorkers": 1,
+                "maxWorkers": 2,
+                "prerequisiteTaskIds": [
+                    "t_2"
+                ]
+            }
+        ],
+        "workers": [
+            {
+                "workerId": "w_1",
+                "name": "Worker 1",
+                "availability": {
+                    "startTime": "2026-01-22T07:00:00.000Z",
+                    "endTime": "2026-01-22T21:00:00.000Z"
+                },
+                "skills": [
+                    "general"
+                ]
+            },
+            {
+                "workerId": "w_2",
+                "name": "Worker 2",
+                "availability": {
+                    "startTime": "2026-01-22T07:00:00.000Z",
+                    "endTime": "2026-01-22T21:00:00.000Z"
+                },
+                "skills": [
+                    "general"
+                ]
+            }
+        ],
+        "originalAssignments": []
+    },
+    "expectedStatus": 200,
+    "invariants": [
+        "circular_handled"
+    ]
+}

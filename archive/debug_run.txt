@@ -1,0 +1,19 @@
+[BalancingService] Loaded preferences for 0 workers.
+[BalancingService] Loaded preferences for 0 workers.
+[BalancingService] Loaded preferences for 0 workers.
+[Config] Missing optional env: DATABASE_URL
+[Config] Missing optional env: FIREBASE_PROJECT_ID
+[Config] Missing optional env: FIREBASE_PRIVATE_KEY_ID
+[Config] Missing optional env: FIREBASE_PRIVATE_KEY
+[Config] Missing optional env: FIREBASE_CLIENT_EMAIL
+[Config] Missing optional env: FIREBASE_CLIENT_ID
+[Config] Missing optional env: FIREBASE_AUTH_URI
+[Config] Missing optional env: FIREBASE_TOKEN_URI
+[Config] Missing optional env: FIREBASE_AUTH_PROVIDER_CERT_URL
+[Config] Missing optional env: FIREBASE_CLIENT_CERT_URL
+[Config] Missing optional env: FIREBASE_UNIVERSE_DOMAIN
+[Config] Missing optional env: FIREBASE_REGION
+[Config] Missing optional env: FIREBASE_DATACONNECT_CONNECTION_ID
+[Config] Missing optional env: DATA_CONNECT_CONNECTION_ID
+Initialising server on port 3000...
+Server is running on port http://localhost:3000

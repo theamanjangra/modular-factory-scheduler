@@ -1,0 +1,27 @@
+Tasks,,,,,
+,,,,,
+TaskName,LaborHoursRemaining,RequiredSkills,PrerequisiteTask,MinWorkers,MaxWorkers
+,,,,,
+Wall Batt insulation,5,closeup,,1,2
+Baffels and Blown In Insulation ,5.5,closeup,Ceiling Rim Insulation,2,2
+Ceiling Rim Insulation,4,closeup,,1,8
+Complete Drywall Back Panel,13.5,drywall,Wall Batt insulation,1,8
+,,,,,
+Complete Exterior OSB,20,closeup,Complete Exterior Fire Wall,2,8
+"Complete Roof 5/8"" OSB",13,closeup,,2,8
+Complete Exterior Fire Wall,10,drywall,,2,8
+Interior Tape / Mud 1st Coat,33,drywall,,1,8
+Interior Tape / Mud 2nd Coat,16,drywall,Interior Tape / Mud 1st Coat,1,8
+,,,,,
+Complete Exterior R-Max,10.5,general,,1,8
+Final sand of drywall,2,drywall,,1,8
+Spray Texture,1.5,paint,Final sand of drywall,1,2
+Spray paint,1,paint,Spray Texture,1,1
+,,,,,
+Tape and install windows,5.25,closeup,,2,4
+Kitchen and Bath Cabinets Install,19,cabinets,,2,4
+Install electrical trim,7,electrical,Kitchen and Bath Cabinets Install,1,8
+,,,,,
+Fascia Soffit,17.5,siding,,2,8
+Install Siding,44,siding,Fascia Soffit,2,8
+Flooring Install,9,flooring,,1,4

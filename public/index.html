@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimalist Planner</title>
+</head>
+
+<body style="font-family: monospace; padding: 20px;">
+    <h1>Minimalist Planner</h1>
+
+    <!-- Input Section -->
+    <div style="margin-bottom: 20px; border: 1px solid #000; padding: 10px;">
+        <h3>Input</h3>
+        <input type="file" id="fileInput" accept=".xlsx" />
+        <br><br>
+        <button onclick="runPlan()">Run Simulation (JSON)</button>
+        <button onclick="exportResults()">Export Excel</button>
+    </div>
+
+    <!-- Output Section -->
+    <div id="outputContainer">
+        <h2>1. assignments</h2>
+        <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+            <thead>
+                <tr>
+                    <th style="text-align: left;">workerId</th>
+                    <th style="text-align: left;">taskId</th>
+                    <th style="text-align: left;">taskName</th>
+                    <th style="text-align: left;">startDate</th>
+                    <th style="text-align: left;">endDate</th>
+                </tr>
+            </thead>
+            <tbody id="bodyAssignments"></tbody>
+        </table>
+
+        <h2>2. unassignedWorkers</h2>
+        <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+            <thead>
+                <tr>
+                    <th style="text-align: left;">workerId</th>
+                    <th style="text-align: left;">startDate</th>
+                    <th style="text-align: left;">endDate</th>
+                </tr>
+            </thead>
+            <tbody id="bodyWorkers"></tbody>
+        </table>
+
+        <h2>3. unassignedTasks</h2>
+        <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+            <thead>
+                <tr>
+                    <th style="text-align: left;">taskId</th>
+                    <th style="text-align: left;">taskName</th>
+                    <th style="text-align: left;">startDate</th>
+                    <th style="text-align: left;">endDate</th>
+                </tr>
+            </thead>
+            <tbody id="bodyTasks"></tbody>
+        </table>
+
+        <h2>Status / Raw JSON</h2>
+        <pre id="rawJson" style="background: #eee; padding: 10px; overflow: auto; max-height: 400px;"></pre>
+    </div>
+
+    <script>
+        async function runPlan() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please select an Excel file.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            // Default Times
+            formData.append('startTime', "2024-01-01T08:00:00Z");
+            formData.append('endTime', "2024-01-01T17:00:00Z");
+
+            try {
+                document.getElementById('rawJson').textContent = "Loading...";
+                const res = await fetch('/api/v1/worker-tasks/plan-file', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) throw new Error(await res.text());
+
+                const data = await res.json();
+                render(data);
+                document.getElementById('rawJson').textContent = JSON.stringify(data, null, 2);
+            } catch (err) {
+                document.getElementById('rawJson').textContent = "Error: " + err.message;
+            }
+        }
+
+        async function exportResults() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please select an Excel file.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('startTime', "2024-01-01T08:00:00Z");
+            formData.append('endTime', "2024-01-01T17:00:00Z");
+
+            try {
+                const res = await fetch('/api/v1/worker-tasks/plan-file-export', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) throw new Error(await res.text());
+
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "results.xlsx";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch (err) {
+                alert("Export failed: " + err.message);
+            }
+        }
+
+        function render(data) {
+            // Clear existing
+            const bodyAssignments = document.getElementById('bodyAssignments');
+            const bodyWorkers = document.getElementById('bodyWorkers');
+            const bodyTasks = document.getElementById('bodyTasks');
+            bodyAssignments.innerHTML = "";
+            bodyWorkers.innerHTML = "";
+            bodyTasks.innerHTML = "";
+
+            // 1. Assignments
+            (data.assignments || []).forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.workerId}</td>
+                    <td>${item.taskId}</td>
+                    <td>${item.taskName || ''}</td>
+                    <td>${item.startDate}</td>
+                    <td>${item.endDate}</td>
+                `;
+                bodyAssignments.appendChild(tr);
+            });
+
+            // 2. Unassigned Workers
+            (data.unassignedWorkers || []).forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.workerId}</td>
+                    <td>${item.startDate}</td>
+                    <td>${item.endDate}</td>
+                `;
+                bodyWorkers.appendChild(tr);
+            });
+
+            // 3. Unassigned Tasks
+            (data.unassignedTasks || []).forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.taskId}</td>
+                    <td>${item.taskName || ''}</td>
+                    <td>${item.startDate}</td>
+                    <td>${item.endDate}</td>
+                `;
+                bodyTasks.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+
+</html>

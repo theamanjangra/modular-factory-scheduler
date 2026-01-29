@@ -1,0 +1,49 @@
+mutation AddNote($id: String!, $text: String!, $type: NoteType) @auth(level: PUBLIC) {
+  note_insert(data: { id: $id, text: $text, type: $type }) 
+}
+
+mutation CreateTravelerTemplate($id: String!, $name: String) @auth(level: PUBLIC) {
+  travelerTemplate_insert(data: { id: $id, name: $name })
+}
+
+mutation CreateStation($id: String!, $name: String, $order: Int, $doesReceiveTravelers: Boolean) @auth(level: PUBLIC) {
+  station_insert(data: { id: $id, name: $name, order: $order, doesReceiveTravelers: $doesReceiveTravelers })
+}
+
+mutation TravelerStation(
+  $id: String!,
+  $travelerId: String!, 
+  $stationId: String!, 
+  $isCurrent: Boolean, 
+  $leadInspectionProgress: Float, 
+  $qamInspectionProgress: Float, 
+  $taskProgress: Float
+) @auth(level: PUBLIC) {
+  travelerStation_insert(data: {
+    id: $id,
+    travelerId: $travelerId, 
+    stationId: $stationId, 
+    isCurrent: $isCurrent, 
+    leadInspectionProgress: $leadInspectionProgress, 
+    qamInspectionProgress: $qamInspectionProgress, 
+    taskProgress: $taskProgress
+  })
+}
+
+mutation Traveler(
+  $id: String!, 
+  $moduleProfileId: String, 
+  $travelerTemplateId: String!, 
+  $isShipped: Boolean, 
+  $notesRequiredUpload: Boolean, 
+  $serialNumber: String
+) @auth(level: PUBLIC) {
+  traveler_insert(data: {
+    id: $id, 
+    moduleProfileId: $moduleProfileId, 
+    travelerTemplateId: $travelerTemplateId, 
+    isShipped: $isShipped, 
+    notesRequiredUpload: $notesRequiredUpload, 
+    serialNumber: $serialNumber
+  })
+}

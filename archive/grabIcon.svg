@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="22" height="12">
+	<path fill="none" stroke="#979797" stroke-width="1" stroke-linecap="square" stroke-miterlimit="10" transform="translate(1 1)" d="M0.65625 0.5L20.34375 0.5" fill-rule="evenodd"/>
+	<path fill="none" stroke="#DDD" stroke-width="1" stroke-linecap="square" stroke-miterlimit="10" d="M0.65625 0.5L20.34375 0.5" fill-rule="evenodd"/>
+	<path fill="none" stroke="#979797" stroke-width="1" stroke-linecap="square" stroke-miterlimit="10" transform="translate(1 6)" d="M0.65625 0.5L20.34375 0.5" fill-rule="evenodd"/>
+	<path fill="none" stroke="#DDD" stroke-width="1" stroke-linecap="square" stroke-miterlimit="10" transform="translate(0 5)" d="M0.65625 0.5L20.34375 0.5" fill-rule="evenodd"/>
+	<path fill="none" stroke="#979797" stroke-width="1" stroke-linecap="square" stroke-miterlimit="10" transform="translate(1 11)" d="M0.65625 0.5L20.34375 0.5" fill-rule="evenodd"/>
+	<path fill="none" stroke="#DDD" stroke-width="1" stroke-linecap="square" stroke-miterlimit="10" transform="translate(0 10)" d="M0.65625 0.5L20.34375 0.5" fill-rule="evenodd"/>
+</svg>

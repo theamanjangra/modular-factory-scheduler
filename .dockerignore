@@ -1,0 +1,14 @@
+node_modules
+client/node_modules
+.git
+.gitignore
+.env
+.env.local
+.DS_Store
+dist
+logs
+tests
+coverage
+*.md
+!README.md
+!GEMINI.md

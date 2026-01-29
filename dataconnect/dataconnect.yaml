@@ -1,0 +1,26 @@
+specVersion: "v1"
+
+# Unique service name for Firebase Data Connect
+serviceId: "vederra-dev-d4327-service"
+
+# Region for deployment
+location: "us-central1"
+
+# Path to your GraphQL schema
+schema:
+  source: "./schema"
+
+  # PostgreSQL Data Source Configuration
+  datasource:
+    postgresql:
+      database: "vederra-dev-d4327-database"
+      cloudSql:
+        instanceId: "firebasevederradev-fdc"
+      # Validation mode — use STRICT after all schema errors are fixed
+      schemaValidation: "COMPATIBLE"
+
+# Path to connector definitions (queries, mutations, subscriptions)
+connectorDirs:
+  - "./example"
+  - "./chat"
+

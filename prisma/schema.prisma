@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  firstname String
+  lastname  String
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Employee {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String?   @unique
+  crews     String[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  timelogs  Timelog[]
+
+  @@map("employees")
+}
+
+model Timelog {
+  id          Int      @id @default(autoincrement())
+  employeeId  Int
+  startTime   DateTime
+  endTime     DateTime
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("timelogs")
+}
+
+model Plan {
+  id          String                 @id @default(uuid())
+  name        String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  inputSnapshot Json?
+  assignments WorkerTaskAssignment[]
+
+  @@map("plans")
+}
+
+model WorkerTaskAssignment {
+  id        String   @id @default(uuid())
+  planId    String
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  workerId  String
+  taskId    String
+  shiftId   String?
+  startTime DateTime
+  endTime   DateTime
+  status    String?   @default("WORKING")  // WORKING, ON_HOLD, IDLE
+  heldAt    DateTime?
+
+  @@index([planId])
+  @@index([workerId])
+  @@index([taskId])
+  @@index([status])
+  @@map("worker_task_assignments")
+}

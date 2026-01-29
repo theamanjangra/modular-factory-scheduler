@@ -1,0 +1,6 @@
+connectorId: "chat"
+generate:
+  javascriptSdk:
+    outputDir: "../../src/dataconnect-generated/chat"
+    package: "@dataconnect/generated"
+    packageJsonDir: "../../"

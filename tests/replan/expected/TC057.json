@@ -1,0 +1,11 @@
+{
+    "id": "TC057",
+    "expectedStatus": 200,
+    "invariants": [
+        "no_overlaps",
+        "valid_times",
+        "diff_minimal",
+        "prereqs_respected"
+    ],
+    "notes": "Auto-generated placeholder. Run oracle to compute expected values for ground_truth cases."
+}

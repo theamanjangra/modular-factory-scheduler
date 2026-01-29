@@ -1,0 +1,103 @@
+[
+  {
+    "taskId": "wall-batt-insulation",
+    "name": "Wall Batt insulation",
+    "estimatedRemainingLaborHours": 5,
+    "prerequisiteTaskIds": [],
+    "minWorkers": 1,
+    "maxWorkers": 2
+  },
+  {
+    "taskId": "baffels-and-blown-in-insulation",
+    "name": "Baffels and Blown In Insulation",
+    "estimatedRemainingLaborHours": 5.5,
+    "prerequisiteTaskIds": [
+      "ceiling-rim-insulation"
+    ],
+    "minWorkers": 2,
+    "maxWorkers": 2
+  },
+  {
+    "taskId": "ceiling-rim-insulation",
+    "name": "Ceiling Rim Insulation",
+    "estimatedRemainingLaborHours": 4,
+    "prerequisiteTaskIds": [],
+    "minWorkers": 1,
+    "maxWorkers": 8
+  },
+  {
+    "taskId": "complete-drywall-back-panel",
+    "name": "Complete Drywall Back Panel",
+    "estimatedRemainingLaborHours": 13.5,
+    "prerequisiteTaskIds": [
+      "wall-batt-insulation"
+    ],
+    "minWorkers": 1,
+    "maxWorkers": 8
+  },
+  {
+    "taskId": "complete-exterior-osb",
+    "name": "Complete Exterior OSB",
+    "estimatedRemainingLaborHours": 20,
+    "prerequisiteTaskIds": [
+      "complete-exterior-fire-wall"
+    ],
+    "minWorkers": 2,
+    "maxWorkers": 8
+  },
+  {
+    "taskId": "complete-roof-5-8-osb-13-complete-exteri",
+    "name": "Complete Roof 5/8 \" OSB,13,Complete Exterior OSB,2,8",
+    "prerequisiteTaskIds": []
+  },
+  {
+    "taskId": "complete-exterior-fire-wall",
+    "name": "Complete Exterior Fire Wall",
+    "estimatedRemainingLaborHours": 10,
+    "prerequisiteTaskIds": [],
+    "minWorkers": 2,
+    "maxWorkers": 8
+  },
+  {
+    "taskId": "interior-tape-mud-1st-coat",
+    "name": "Interior Tape / Mud 1st Coat",
+    "estimatedRemainingLaborHours": 33,
+    "prerequisiteTaskIds": [],
+    "minWorkers": 1,
+    "maxWorkers": 8
+  },
+  {
+    "taskId": "interior-tape-mud-2nd-coat",
+    "name": "Interior Tape / Mud 2nd Coat",
+    "estimatedRemainingLaborHours": 16,
+    "prerequisiteTaskIds": [
+      "interior-tape-mud-1st-coat"
+    ],
+    "minWorkers": 1,
+    "maxWorkers": 8
+  },
+  {
+    "taskId": "complete-exterior-r-max",
+    "name": "Complete Exterior R-Max",
+    "estimatedRemainingLaborHours": 10.5,
+    "prerequisiteTaskIds": [],
+    "minWorkers": 1,
+    "maxWorkers": 8
+  },
+  {
+    "taskId": "final-sand-of-drywall",
+    "name": "Final sand of drywall",
+    "estimatedRemainingLaborHours": 2,
+    "prerequisiteTaskIds": [],
+    "minWorkers": 1,
+    "maxWorkers": 8
+  },
+  {
+    "taskId": "tape-and-install-windows",
+    "name": "Tape and install windows",
+    "estimatedRemainingLaborHours": 5.25,
+    "prerequisiteTaskIds": [],
+    "minWorkers": 2,
+    "maxWorkers": 4
+  }
+]

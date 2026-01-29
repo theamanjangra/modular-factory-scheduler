@@ -1,0 +1,103 @@
+{
+    "interval": {
+        "startTime": "2024-01-01T08:00:00Z",
+        "endTime": "2024-01-01T17:00:00Z"
+    },
+    "useHistorical": false,
+    "workers": [
+        {
+            "workerId": "w1",
+            "name": "Greydis Salguera",
+            "skills": [
+                "closeup",
+                "drywall"
+            ]
+        },
+        {
+            "workerId": "w2",
+            "name": "Angel Rodriguez",
+            "skills": [
+                "closeup",
+                "drywall"
+            ]
+        },
+        {
+            "workerId": "w3",
+            "name": "Carlos Lopez",
+            "skills": [
+                "closeup"
+            ]
+        },
+        {
+            "workerId": "w4",
+            "name": "Fabian Perez",
+            "skills": [
+                "drywall"
+            ]
+        },
+        {
+            "workerId": "w5",
+            "name": "Cesar Franco",
+            "skills": [
+                "drywall"
+            ]
+        },
+        {
+            "workerId": "w6",
+            "name": "Jose Alfredo Galaviz",
+            "skills": [
+                "closeup",
+                "drywall"
+            ]
+        }
+    ],
+    "tasks": [
+        {
+            "taskId": "t1",
+            "name": "Tape and install windows",
+            "estimatedRemainingLaborHours": 5.25,
+            "estimatedTotalLaborHours": 5.25,
+            "requiredSkills": [
+                "closeup"
+            ],
+            "minWorkers": 2,
+            "maxWorkers": 4
+        },
+        {
+            "taskId": "t2",
+            "name": "Wall Batt insulation",
+            "estimatedRemainingLaborHours": 5,
+            "estimatedTotalLaborHours": 5,
+            "requiredSkills": [
+                "closeup"
+            ],
+            "minWorkers": 1,
+            "maxWorkers": 2
+        },
+        {
+            "taskId": "t3",
+            "name": "Interior Tape / Mud 1st Coat",
+            "estimatedRemainingLaborHours": 33,
+            "estimatedTotalLaborHours": 33,
+            "requiredSkills": [
+                "drywall"
+            ],
+            "minWorkers": 1,
+            "maxWorkers": 8
+        },
+        {
+            "taskId": "t4",
+            "name": "Interior Tape / Mud 2nd Coat",
+            "estimatedRemainingLaborHours": 16,
+            "estimatedTotalLaborHours": 16,
+            "requiredSkills": [
+                "drywall"
+            ],
+            "prerequisiteTaskIds": [
+                "t3"
+            ],
+            "minWorkers": 1,
+            "maxWorkers": 8
+        }
+    ]
+}

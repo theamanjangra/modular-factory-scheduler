@@ -1,0 +1,405 @@
+# =====================
+# Base User Type
+# =====================
+
+type User @table {
+  id: String!
+  email: String! @unique
+  firstname: String!
+  lastname: String!
+  role: String!
+  lastActivity: Timestamp
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+}
+
+# =====================
+# Enums
+# =====================
+
+enum TaskStatus {
+  pending
+  approved
+  rejected
+}
+enum LeadType {
+  closeup
+  drywall
+  electrical
+  exterior
+  floors
+  hvac
+  insulation
+  interior
+  office
+  paint
+  plumbing
+  roofing
+  shipping
+  walls
+}
+enum NoteType {
+  approval
+  rejection
+  photoOnly
+  move
+  moveRequest
+  normal
+}
+enum StorageDirectory {
+  settings
+  travelers
+  temp
+}
+enum Skill {
+  framing
+  finishCarpentry
+  electricalTrim
+  electricalRough
+  plumbing
+  drywallHanging
+  drywallMud
+  texture
+  painting
+  roofing
+  flooring
+  boxMoving
+  cutting
+  hvac
+}
+enum ModuleCharacteristicType {
+  squareFeet
+  linearFeetExteriorWalls
+  linearFeetInteriorWalls
+  countInteriorWalls
+  countToilets
+  countSinks
+  countWindows
+  countExteriorDoors
+  countInteriorDoors
+  squareFeetExteriorCloseUp
+  squareFeetRoofing
+  linearFeetCabinets
+  countElectricalTerminals
+  linearFeetFirewall
+  countStairs
+  hasHvacDucting
+}
+enum WorkerRole {
+  worker
+  lead
+  qam
+  supervisor
+  admin
+}
+enum IssueType {
+  materialShortage
+  mistake
+}
+enum PtoRequestStatus {
+  pending
+  approved
+  rejected
+}
+enum PtoType {
+  sick
+  vacation
+  juryDuty
+  bereavement
+  court
+}
+# =====================
+# Core Project Structure
+# =====================
+
+type Project @table {
+  id: String!
+  name: String
+}
+
+type ModuleProfile @table {
+  id: String!
+  name: String
+  project: Project
+}
+
+type ModuleCharacteristic @table {
+  id: String!
+  moduleProfile: ModuleProfile!
+  characteristicType: ModuleCharacteristicType
+  value: Float
+}
+
+type TravelerTemplate @table {
+  id: String!
+  name: String
+}
+
+type Traveler @table {
+  id: String!
+  travelerTemplate: TravelerTemplate!
+  moduleProfile: ModuleProfile
+  isShipped: Boolean
+  notesRequiredUpload: Boolean
+  serialNumber: String
+}
+
+# =====================
+# Traveler and Station
+# =====================
+
+type InspectionArea @table {
+  id: String!
+  name: String
+  order: Int
+}
+
+type Station @table {
+  id: String!
+  inspectionArea: InspectionArea
+  name: String
+  order: Int
+  doesReceiveTravelers: Boolean
+}
+
+# ✅ join table for Traveler <-> Station (with id)
+type TravelerStation @table {
+  id: String!
+  traveler: Traveler!
+  station: Station!
+  leadInspectionProgress: Float
+  qamInspectionProgress: Float
+  taskProgress: Float
+  isCurrent: Boolean
+}
+
+# =====================
+# Inspection System
+# =====================
+
+type InspectionItemTemplate @table {
+  id: String!
+  inspectionArea: InspectionArea!
+  leadType: LeadType
+  name: String
+  order: Int
+  isPhotoRequired: Boolean
+  isVideoRequired: Boolean
+}
+
+type InspectionItem @table {
+  id: String!
+  inspectionItemTemplate: InspectionItemTemplate!
+  traveler: Traveler!
+  isMoveRequested: Boolean
+  isMoved: Boolean
+  newInspectionArea: InspectionArea
+  leadStatus: TaskStatus
+  qamStatus: TaskStatus
+}
+
+# =====================
+# Task System
+# =====================
+
+type TaskTemplate @table {
+  id: String!
+  station: Station
+  leadType: LeadType
+  name: String
+  order: Int
+  isPhotoRequired: Boolean
+  isVideoRequired: Boolean
+  minWorkers: Int
+  maxWorkers: Int
+  rankedSkills: [Skill]
+  moduleCharacteristicType: ModuleCharacteristicType
+}
+
+type Task @table {
+  id: String!
+  taskTemplate: TaskTemplate!
+  traveler: Traveler!
+  isMoveRequested: Boolean
+  isMoved: Boolean
+  newStation: Station
+  leadStatus: TaskStatus
+  qamStatus: TaskStatus
+  createdAt: Timestamp!
+}
+
+# =====================
+# Adhoc Items
+# =====================
+
+type AdhocTask @table {
+  id: String!
+  traveler: Traveler!
+  station: Station!
+  isMoveRequested: Boolean
+  isMoved: Boolean
+  newStation: Station
+  leadType: LeadType
+  leadStatus: TaskStatus
+  qamStatus: TaskStatus
+  order: Int
+  isPhotoRequired: Boolean
+  isVideoRequired: Boolean
+}
+
+type AdhocInspectionItem @table {
+  id: String!
+  traveler: Traveler!
+  inspectionArea: InspectionArea!
+  isMoveRequested: Boolean
+  isMoved: Boolean
+  newInspectionArea: InspectionArea
+  leadType: LeadType
+  leadStatus: TaskStatus
+  qamStatus: TaskStatus
+  order: Int
+  isPhotoRequired: Boolean
+  isVideoRequired: Boolean
+}
+
+# =====================
+# Issues
+# =====================
+
+type Issue @table {
+  id: String!
+  task: Task
+  inspectionItem: InspectionItem
+  name: String
+  description: String
+  type: IssueType
+  isResolved: Boolean
+}
+
+# =====================
+# Workers and Time Tracking
+# =====================
+
+type Worker @table {
+  id: String!
+  station: Station
+  employeeId: String
+  firstName: String
+  lastName: String
+  leadTypes: [LeadType]
+  passcode: String
+  role: WorkerRole
+  newStation: Station
+  rankedSkills: [Skill]
+  customClockInDate: Timestamp
+  customClockOutDate: Timestamp
+}
+
+# ✅ worker-task join table with id
+type WorkerTask @table {
+  id: String!
+  worker: Worker!
+  task: Task!
+  startDate: Timestamp
+  endDate: Timestamp
+  scheduledStartDate: Timestamp
+  scheduledEndDate: Timestamp
+}
+
+type TimeLog @table {
+  id: String!
+  worker: Worker!
+  officialClockInDate: Timestamp
+  officialClockOutDate: Timestamp
+  actualClockInDate: Timestamp
+  actualClockOutDate: Timestamp
+}
+
+# =====================
+# Supporting Types
+# =====================
+
+type Note @table {
+  id: String!
+  text: String
+  type: NoteType
+  traveler: Traveler
+  task: Task
+  inspectionItem: InspectionItem
+  adhocTask: AdhocTask
+  adhocInspectionItem: AdhocInspectionItem
+}
+
+type ManagedFile @table {
+  id: String!
+  contentType: String
+  filename: String
+  isUploaded: Boolean
+  isAuthRequired: Boolean
+  shouldBePublic: Boolean
+  shouldCache: Boolean
+  shouldDeferUpload: Boolean
+  storageDir: StorageDirectory
+  uploadAttempts: Int
+  createdAt: Timestamp!
+  note: Note
+}
+
+# =====================
+# Pto Requests
+# =====================
+type PtoRequest @table {
+  id: String!
+  worker: Worker!
+  startDate: Timestamp
+  endDate: Timestamp
+  type: PtoType
+  hoursRequested: Float
+  note: String
+  status: PtoRequestStatus
+}
+
+# =====================
+# Short-named Mapping Tables
+# =====================
+
+type TravelerTemplateInspectionItemTemplate
+  @table(name: "traveler_template_inspection_item_template") {
+  id: String!
+  travelerTemplate: TravelerTemplate! @ref(constraintName: "fk_ttiit_trv")
+  inspectionItemTemplate: InspectionItemTemplate!
+    @ref(constraintName: "fk_ttiit_tmp")
+}
+
+type TravelerTemplateTaskTemplate
+  @table(name: "traveler_template_task_template") {
+  id: String!
+  travelerTemplate: TravelerTemplate! @ref(constraintName: "fk_ttt_trv")
+  taskTemplate: TaskTemplate! @ref(constraintName: "fk_ttt_tmp")
+}
+
+# =====================
+# Chat System
+# =====================
+
+type ChatSession @table {
+  id: String!
+  userId: String
+  metadata: String # JSON string
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  expiresAt: Timestamp!
+}
+
+type ChatMessage @table {
+  id: String!
+  session: ChatSession!
+  sessionId: String!
+  role: String! # 'user' or 'assistant'
+  content: String!
+  timestamp: Timestamp!
+
+  # Attachment metadata for PDF uploads
+  attachmentType: String      # 'pdf' | null
+  attachmentFilename: String  # Original filename or null
+}

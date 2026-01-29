@@ -1,0 +1,133 @@
+# =====================
+# Notes
+# =====================
+
+query GetNotes @auth(level: PUBLIC) {
+  notes {
+    id
+    text
+    type
+  }
+}
+
+# =====================
+# Traveler Templates
+# =====================
+
+query GetTravelerTemplates @auth(level: PUBLIC) {
+  travelerTemplates {
+    id
+    name
+  }
+}
+
+# =====================
+# Stations
+# =====================
+
+query GetStations @auth(level: PUBLIC) {
+  stations {
+    id
+    name
+    order
+    doesReceiveTravelers
+  }
+}
+
+query GetStationById($id: String!) @auth(level: PUBLIC) {
+  station(id: $id) {
+    id
+    name
+    order
+    doesReceiveTravelers
+  }
+}
+
+# =====================
+# Travelers
+# =====================
+
+query GetTravelers @auth(level: PUBLIC) {
+  travelers {
+    id
+    moduleProfileId
+    travelerTemplateId
+    isShipped
+    notesRequiredUpload
+    serialNumber
+  }
+}
+
+query GetTravelerById($id: String!) @auth(level: PUBLIC) {
+  traveler(id: $id) {
+    id
+    moduleProfileId
+    travelerTemplateId
+    isShipped
+    notesRequiredUpload
+    serialNumber
+  }
+}
+
+# =====================
+# Traveler <-> Station Links
+# =====================
+
+query GetTravelerStations @auth(level: PUBLIC) {
+  travelerStations {
+    id
+    travelerId
+    stationId
+    leadInspectionProgress
+    qamInspectionProgress
+    taskProgress
+    isCurrent
+  }
+}
+
+query GetTravelerStationsByTraveler($travelerId: String!) @auth(level: PUBLIC) {
+  travelerStations(where: { travelerId: { eq: $travelerId } }) {
+    id
+    travelerId
+    stationId
+    leadInspectionProgress
+    qamInspectionProgress
+    taskProgress
+    isCurrent
+  }
+}
+
+# =====================
+# Worker & Tasks (Optional)
+# =====================
+
+query GetWorkers @auth(level: PUBLIC) {
+  workers {
+    id
+    firstName
+    lastName
+    role
+    employeeId
+  }
+}
+
+query GetWorkerTasks @auth(level: PUBLIC) {
+  workerTasks {
+    id
+    workerId
+    taskId
+    startDate
+    endDate
+  }
+}
+
+query GetTasks @auth(level: PUBLIC) {
+  tasks {
+    id
+    travelerId
+    taskTemplateId
+    leadStatus
+    qamStatus
+    createdAt
+  }
+}

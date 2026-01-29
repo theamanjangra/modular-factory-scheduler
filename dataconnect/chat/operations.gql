@@ -1,0 +1,61 @@
+# Create a new chat session
+mutation CreateChatSession($id: String!, $userId: String, $metadata: String, $createdAt: Timestamp!, $updatedAt: Timestamp!, $expiresAt: Timestamp!) @auth(level: PUBLIC) {
+  chatSession_insert(data: {
+    id: $id,
+    userId: $userId,
+    metadata: $metadata,
+    createdAt: $createdAt,
+    updatedAt: $updatedAt,
+    expiresAt: $expiresAt
+  })
+}
+
+# Get a chat session by ID
+query GetChatSession($id: String!) @auth(level: PUBLIC) {
+  chatSession(id: $id) {
+    id
+    userId
+    metadata
+    createdAt
+    updatedAt
+    expiresAt
+  }
+}
+
+# Add a message to a session
+mutation AddChatMessage(
+  $id: String!,
+  $sessionId: String!,
+  $role: String!,
+  $content: String!,
+  $timestamp: Timestamp!,
+  $attachmentType: String,
+  $attachmentFilename: String
+) @auth(level: PUBLIC) {
+  chatMessage_insert(data: {
+    id: $id,
+    sessionId: $sessionId,
+    role: $role,
+    content: $content,
+    timestamp: $timestamp,
+    attachmentType: $attachmentType,
+    attachmentFilename: $attachmentFilename
+  })
+}
+
+# List messages for a session
+query ListChatMessages($sessionId: String!) @auth(level: PUBLIC) {
+  chatMessages(where: { sessionId: { eq: $sessionId } }, orderBy: { timestamp: ASC }) {
+    id
+    role
+    content
+    timestamp
+    attachmentType
+    attachmentFilename
+  }
+}
+
+# Delete expired sessions (optional cleanup)
+mutation DeleteChatSession($id: String!) @auth(level: PUBLIC) {
+  chatSession_delete(id: $id)
+}

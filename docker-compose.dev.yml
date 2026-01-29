@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  db_dev:
+    image: postgres:15-alpine
+    container_name: modular_factory_dev_db
+    restart: always
+    environment:
+      POSTGRES_USER: plan_dev
+      POSTGRES_PASSWORD: plan_dev
+      POSTGRES_DB: modular_factory_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - dev_db_data:/var/lib/postgresql/data
+
+volumes:
+  dev_db_data:

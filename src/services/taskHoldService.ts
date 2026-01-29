@@ -1,0 +1,219 @@
+import { prisma } from '../config/db';
+import { Task, WorkerTask } from '../types';
+
+// Valid status values
+export type TaskStatus = 'WORKING' | 'ON_HOLD' | 'IDLE';
+
+export class TaskHoldService {
+
+    /**
+     * Hold a task and all its dependent tasks.
+     * - Sets status to ON_HOLD
+     * - Records heldAt timestamp
+     * - Cascades to all downstream dependent tasks
+     */
+    public async holdTask(planId: string, taskId: string): Promise<{
+        heldTaskIds: string[];
+        message: string;
+    }> {
+        // 1. Get the plan with all assignments
+        const plan = await prisma.plan.findUnique({
+            where: { id: planId },
+            include: { assignments: true }
+        });
+
+        if (!plan) {
+            throw { statusCode: 404, message: `Plan not found: ${planId}` };
+        }
+
+        // 2. Check if the task exists in this plan
+        const taskAssignments = plan.assignments.filter(a => a.taskId === taskId);
+        if (taskAssignments.length === 0) {
+            throw { statusCode: 404, message: `Task not found in plan: ${taskId}` };
+        }
+
+        // 3. Check if task is already on hold
+        const alreadyOnHold = taskAssignments.some(a => a.status === 'ON_HOLD');
+        if (alreadyOnHold) {
+            throw { statusCode: 400, message: `Task is already on hold: ${taskId}` };
+        }
+
+        // 4. Get task definitions from inputSnapshot to find dependencies
+        const inputSnapshot = plan.inputSnapshot as any;
+        const tasks: Task[] = inputSnapshot?.tasks || [];
+        
+        // 5. Build dependents map (taskId -> tasks that depend on it)
+        const dependentsMap = this.buildDependentsMap(tasks);
+
+        // 6. Collect all downstream task IDs (including the original task)
+        const allTaskIdsToHold = this.collectDownstreamTaskIds(taskId, dependentsMap);
+
+        // 7. Update all assignments for these tasks
+        const now = new Date();
+        await prisma.workerTaskAssignment.updateMany({
+            where: {
+                planId,
+                taskId: { in: Array.from(allTaskIdsToHold) }
+            },
+            data: {
+                status: 'ON_HOLD',
+                heldAt: now
+            }
+        });
+
+        return {
+            heldTaskIds: Array.from(allTaskIdsToHold),
+            message: `Held ${allTaskIdsToHold.size} task(s) including dependents`
+        };
+    }
+
+    /**
+     * Resume a task and all its dependent tasks.
+     * - Calculates hold duration
+     * - Shifts startTime and endTime by hold duration
+     * - Sets status back to WORKING
+     * - Clears heldAt
+     */
+    public async resumeTask(planId: string, taskId: string): Promise<{
+        resumedTaskIds: string[];
+        holdDurationMs: number;
+        message: string;
+    }> {
+        // 1. Get the plan with all assignments
+        const plan = await prisma.plan.findUnique({
+            where: { id: planId },
+            include: { assignments: true }
+        });
+
+        if (!plan) {
+            throw { statusCode: 404, message: `Plan not found: ${planId}` };
+        }
+
+        // 2. Check if the task exists and is on hold
+        const taskAssignments = plan.assignments.filter(a => a.taskId === taskId);
+        if (taskAssignments.length === 0) {
+            throw { statusCode: 404, message: `Task not found in plan: ${taskId}` };
+        }
+
+        const onHoldAssignment = taskAssignments.find(a => a.status === 'ON_HOLD');
+        if (!onHoldAssignment) {
+            throw { statusCode: 400, message: `Task is not on hold: ${taskId}` };
+        }
+
+        if (!onHoldAssignment.heldAt) {
+            throw { statusCode: 500, message: `Task is on hold but heldAt is missing: ${taskId}` };
+        }
+
+        // 3. Calculate hold duration
+        const now = new Date();
+        const holdDurationMs = now.getTime() - onHoldAssignment.heldAt.getTime();
+
+        // 4. Get task definitions from inputSnapshot to find dependencies
+        const inputSnapshot = plan.inputSnapshot as any;
+        const tasks: Task[] = inputSnapshot?.tasks || [];
+
+        // 5. Build dependents map and collect all downstream tasks
+        const dependentsMap = this.buildDependentsMap(tasks);
+        const allTaskIdsToResume = this.collectDownstreamTaskIds(taskId, dependentsMap);
+
+        // 6. Get all assignments for these tasks
+        const assignmentsToUpdate = plan.assignments.filter(
+            a => allTaskIdsToResume.has(a.taskId) && a.status === 'ON_HOLD'
+        );
+
+        // 7. Update each assignment: shift times and clear hold status
+        for (const assignment of assignmentsToUpdate) {
+            const newStartTime = new Date(assignment.startTime.getTime() + holdDurationMs);
+            const newEndTime = new Date(assignment.endTime.getTime() + holdDurationMs);
+
+            await prisma.workerTaskAssignment.update({
+                where: { id: assignment.id },
+                data: {
+                    startTime: newStartTime,
+                    endTime: newEndTime,
+                    status: 'WORKING',
+                    heldAt: null
+                }
+            });
+        }
+
+        return {
+            resumedTaskIds: Array.from(allTaskIdsToResume),
+            holdDurationMs,
+            message: `Resumed ${allTaskIdsToResume.size} task(s), shifted times by ${Math.round(holdDurationMs / 1000 / 60)} minutes`
+        };
+    }
+
+    /**
+     * Build a map of taskId -> list of taskIds that depend on it.
+     * Uses prerequisiteTaskIds from Task definitions.
+     */
+    private buildDependentsMap(tasks: Task[]): Map<string, string[]> {
+        const map = new Map<string, string[]>();
+
+        tasks.forEach(task => {
+            const prereqs = task.prerequisiteTaskIds || [];
+            prereqs.forEach(prereqId => {
+                const list = map.get(prereqId) || [];
+                if (!list.includes(task.taskId)) {
+                    list.push(task.taskId);
+                }
+                map.set(prereqId, list);
+            });
+        });
+
+        return map;
+    }
+
+    /**
+     * Collect all downstream task IDs starting from a root task.
+     * Uses BFS to traverse the dependency graph.
+     */
+    private collectDownstreamTaskIds(rootTaskId: string, dependentsMap: Map<string, string[]>): Set<string> {
+        const result = new Set<string>();
+        const queue: string[] = [rootTaskId];
+
+        while (queue.length > 0) {
+            const current = queue.shift()!;
+            if (result.has(current)) continue;
+            
+            result.add(current);
+            
+            const dependents = dependentsMap.get(current) || [];
+            dependents.forEach(depId => {
+                if (!result.has(depId)) {
+                    queue.push(depId);
+                }
+            });
+        }
+
+        return result;
+    }
+
+    /**
+     * Get the current status of a task in a plan.
+     */
+    public async getTaskStatus(planId: string, taskId: string): Promise<{
+        taskId: string;
+        status: string;
+        heldAt: Date | null;
+        assignmentCount: number;
+    }> {
+        const assignments = await prisma.workerTaskAssignment.findMany({
+            where: { planId, taskId }
+        });
+
+        if (assignments.length === 0) {
+            throw { statusCode: 404, message: `Task not found in plan: ${taskId}` };
+        }
+
+        // Return the status of the first assignment (they should all be the same)
+        const firstAssignment = assignments[0];
+        return {
+            taskId,
+            status: firstAssignment.status || 'WORKING',
+            heldAt: firstAssignment.heldAt,
+            assignmentCount: assignments.length
+        };
+    }
+}

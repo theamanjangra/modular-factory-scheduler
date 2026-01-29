@@ -1,0 +1,76 @@
+{
+    "shift1": {
+        "productionRate": 0.5,
+        "shiftInterval": {
+            "start": "07:00",
+            "end": "15:00"
+        },
+        "workers": [
+            {
+                "workerId": "w1",
+                "name": "DayWorker1",
+                "skills": [
+                    "skill_A"
+                ]
+            },
+            {
+                "workerId": "w2",
+                "name": "DayWorker2",
+                "skills": [
+                    "skill_A"
+                ]
+            }
+        ]
+    },
+    "shift2": {
+        "productionRate": 1.0,
+        "shiftInterval": {
+            "start": "15:00",
+            "end": "23:00"
+        },
+        "workers": [
+            {
+                "workerId": "w3",
+                "name": "NightWorker1",
+                "skills": [
+                    "skill_A"
+                ]
+            },
+            {
+                "workerId": "w4",
+                "name": "NightWorker2",
+                "skills": [
+                    "skill_A"
+                ]
+            }
+        ]
+    },
+    "tasks": [
+        {
+            "taskId": "t1",
+            "name": "Phase 1 Task",
+            "estimatedTotalLaborHours": 14,
+            "minWorkers": 2,
+            "maxWorkers": 2,
+            "requiredSkills": [
+                "skill_A"
+            ],
+            "shiftCompletionPreference": "mustCompleteWithinShift"
+        },
+        {
+            "taskId": "t2",
+            "name": "Phase 2 Task",
+            "estimatedTotalLaborHours": 14,
+            "minWorkers": 2,
+            "maxWorkers": 2,
+            "requiredSkills": [
+                "skill_A"
+            ],
+            "prerequisiteTaskIds": [
+                "t1"
+            ],
+            "shiftCompletionPreference": "mustCompleteWithinShift"
+        }
+    ],
+    "globalStartTime": "2024-01-01T07:00:00Z"
+}

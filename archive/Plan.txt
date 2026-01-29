@@ -1,0 +1,172 @@
+---
+  Implementation Plan: Shift-Relative Worker Availability
+
+  Overview
+
+  The fix requires 3 coordinated changes across 2 files:
+
+  ---
+  Change 1: Update PlanAdjustmentPanel.tsx Props Interface (lines 67-78)
+
+  Current:
+  interface PlanAdjustmentPanelProps {
+      tasks: Task[];
+      workers: Worker[];
+      planId: string | undefined;
+      planStartTime: string | undefined;
+      onAdjust: (...) => Promise<AdjustmentResult>;
+      isLoading?: boolean;
+  }
+
+  New:
+  interface ShiftWindow {
+      date: string;        // YYYY-MM-DD
+      startTime: string;   // HH:mm
+      endTime: string;     // HH:mm
+  }
+
+  interface PlanAdjustmentPanelProps {
+      tasks: Task[];
+      workers: Worker[];
+      planId: string | undefined;
+      planStartTime: string | undefined;
+      onAdjust: (...) => Promise<AdjustmentResult>;
+      isLoading?: boolean;
+      // NEW: Shift window configuration
+      shift1?: ShiftWindow;
+      shift2?: ShiftWindow;
+      useShift2?: boolean;
+  }
+
+  ---
+  Change 2: Update Component Destructuring & Worker Update Logic
+
+  A) Destructure new props (line ~123-130):
+  export const PlanAdjustmentPanel: React.FC<PlanAdjustmentPanelProps> = ({
+      tasks, workers, planId, planStartTime, onAdjust, isLoading = false,
+      shift1, shift2, useShift2 = false,  // NEW
+  }) => {
+
+  B) Fix addWorkerUpdate (lines 258-273) to default to full shift:
+  const addWorkerUpdate = () => {
+      if (availableWorkers.length === 0) return;
+      const firstWorker = availableWorkers[0];
+
+      // NEW: Default to full shift window (Shift 1)
+      const shiftDate = shift1?.date || planStartTime?.split('T')[0] || '';
+      const shiftStart = shift1?.startTime || '07:00';
+      const shiftEnd = shift1?.endTime || '17:00';
+
+      const startIso = fromDatetimeLocalWallClock(`${shiftDate}T${shiftStart}`);
+      const endIso = fromDatetimeLocalWallClock(`${shiftDate}T${shiftEnd}`);
+
+      setWorkerUpdates(prev => [
+          ...prev,
+          {
+              id: generateId(),
+              workerId: firstWorker.workerId,
+              startTime: startIso,
+              endTime: endIso,
+              type: 'custom',
+              selectedShift: 1,  // NEW: Track which shift
+          }
+      ]);
+  };
+
+  C) Fix applyQuickAction (lines 287-320) to be shift-relative:
+  const applyQuickAction = (id: string, action: 'late_1h' | 'late_2h' | 'no_show' | 'left_early') => {
+      setWorkerUpdates(prev => prev.map(u => {
+          if (u.id !== id) return u;
+
+          // NEW: Use the worker's selected shift
+          const isShift2 = u.selectedShift === 2;
+          const shift = isShift2 ? shift2 : shift1;
+          const shiftDate = shift?.date || planStartTime?.split('T')[0] || '';
+          const shiftStartHHMM = shift?.startTime || '07:00';
+          const shiftEndHHMM = shift?.endTime || '17:00';
+
+          // Parse shift start hour for +1h/+2h calculations
+          const [startH, startM] = shiftStartHHMM.split(':').map(Number);
+          const late1hTime = `${String(startH + 1).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
+          const late2hTime = `${String(startH + 2).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
+
+          let newStart = u.startTime;
+          let newEnd = u.endTime;
+
+          switch (action) {
+              case 'late_1h':
+                  newStart = fromDatetimeLocalWallClock(`${shiftDate}T${late1hTime}`);
+                  newEnd = fromDatetimeLocalWallClock(`${shiftDate}T${shiftEndHHMM}`);
+                  break;
+              case 'late_2h':
+                  newStart = fromDatetimeLocalWallClock(`${shiftDate}T${late2hTime}`);
+                  newEnd = fromDatetimeLocalWallClock(`${shiftDate}T${shiftEndHHMM}`);
+                  break;
+              case 'no_show':
+                  newStart = fromDatetimeLocalWallClock(`${shiftDate}T${shiftStartHHMM}`);
+                  newEnd = fromDatetimeLocalWallClock(`${shiftDate}T${shiftStartHHMM}`);
+                  break;
+              case 'left_early':
+                  newStart = fromDatetimeLocalWallClock(`${shiftDate}T${shiftStartHHMM}`);
+                  // Keep using currentTime for "left early"
+                  const baseLocal = currentTime || toDatetimeLocalWallClock(planStartTime || '');
+                  newEnd = fromDatetimeLocalWallClock(baseLocal);
+                  break;
+          }
+
+          return { ...u, startTime: newStart, endTime: newEnd, type: action };
+      }));
+  };
+
+  ---
+  Change 3: Update ResultsPage.tsx to Pass Shift Windows (lines 227-238)
+
+  <PlanAdjustmentPanel
+      tasks={data.tasks}
+      workers={data.workers || []}
+      planId={data.planId}
+      planStartTime={planWindow?.startIso}
+      onAdjust={adjustPlan}
+      isLoading={loading}
+      // NEW: Pass shift configuration
+      shift1={{ date: shiftDates.shift1Date, startTime: shift1Start, endTime: shift1End }}
+      shift2={useShift2 ? { date: shiftDates.shift2Date, startTime: shift2Start, endTime: shift2End } : undefined}
+      useShift2={useShift2}
+  />
+
+  ---
+  Change 4: Add Shift Toggle UI (inside worker update card, after worker select)
+
+  {/* Shift Selector (only if multi-shift enabled) */}
+  {useShift2 && (
+      <div className="flex gap-1 bg-gray-100 p-0.5 rounded">
+          <button
+              onClick={() => setWorkerUpdates(prev => prev.map(u =>
+                  u.id === update.id ? { ...u, selectedShift: 1 } : u
+              ))}
+              className={`text-xs px-2 py-1 rounded ${update.selectedShift === 1 ? 'bg-white shadow-sm' : ''}`}
+          >
+              Shift 1
+          </button>
+          <button
+              onClick={() => setWorkerUpdates(prev => prev.map(u =>
+                  u.id === update.id ? { ...u, selectedShift: 2 } : u
+              ))}
+              className={`text-xs px-2 py-1 rounded ${update.selectedShift === 2 ? 'bg-white shadow-sm' : ''}`}
+          >
+              Shift 2
+          </button>
+      </div>
+  )}
+
+  ---
+  Would you like me to proceed with implementing these changes? I can apply them all at once, or you can review and implement them yourself for hands-on learning.
+
+✻ Worked for 1m 14s
+
+  Todos · ctrl+t to hide todos
+  ☐ Add shift window props to PlanAdjustmentPanel interface
+  ☐ Pass shift windows from ResultsPage to PlanAdjustmentPanel
+  ☐ Update addWorkerUpdate to default to full shift window
+  ☐ Fix quick actions to use shift start times
+  ☐ Add shift toggle UI for multi-shift mode

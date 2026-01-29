@@ -1,0 +1,141 @@
+{
+    "id": "TC089",
+    "name": "Prerequisite chain length 5",
+    "description": "Chain of 5 dependent tasks",
+    "category": "prerequisites",
+    "input": {
+        "currentTime": "2026-01-22T07:00:00.000Z",
+        "updates": [
+            {
+                "taskId": "t_1",
+                "laborHoursRemaining": 4
+            }
+        ],
+        "tasks": [
+            {
+                "taskId": "t_1",
+                "name": "Task t_1",
+                "estimatedTotalLaborHours": 2,
+                "estimatedRemainingLaborHours": 2,
+                "minWorkers": 1,
+                "maxWorkers": 3,
+                "taskType": "default",
+                "requiredSkills": [
+                    "general"
+                ]
+            },
+            {
+                "taskId": "t_2",
+                "name": "Task t_2",
+                "estimatedTotalLaborHours": 2,
+                "estimatedRemainingLaborHours": 2,
+                "minWorkers": 1,
+                "maxWorkers": 3,
+                "prerequisiteTaskIds": [
+                    "t_1"
+                ],
+                "taskType": "default",
+                "requiredSkills": [
+                    "general"
+                ]
+            },
+            {
+                "taskId": "t_3",
+                "name": "Task t_3",
+                "estimatedTotalLaborHours": 2,
+                "estimatedRemainingLaborHours": 2,
+                "minWorkers": 1,
+                "maxWorkers": 3,
+                "prerequisiteTaskIds": [
+                    "t_2"
+                ],
+                "taskType": "default",
+                "requiredSkills": [
+                    "general"
+                ]
+            },
+            {
+                "taskId": "t_4",
+                "name": "Task t_4",
+                "estimatedTotalLaborHours": 2,
+                "estimatedRemainingLaborHours": 2,
+                "minWorkers": 1,
+                "maxWorkers": 3,
+                "prerequisiteTaskIds": [
+                    "t_3"
+                ],
+                "taskType": "default",
+                "requiredSkills": [
+                    "general"
+                ]
+            },
+            {
+                "taskId": "t_5",
+                "name": "Task t_5",
+                "estimatedTotalLaborHours": 2,
+                "estimatedRemainingLaborHours": 2,
+                "minWorkers": 1,
+                "maxWorkers": 3,
+                "prerequisiteTaskIds": [
+                    "t_4"
+                ],
+                "taskType": "default",
+                "requiredSkills": [
+                    "general"
+                ]
+            }
+        ],
+        "workers": [
+            {
+                "workerId": "w_1",
+                "name": "Worker 1",
+                "availability": {
+                    "startTime": "2026-01-22T07:00:00.000Z",
+                    "endTime": "2026-01-22T21:00:00.000Z"
+                },
+                "skills": [
+                    "general"
+                ]
+            }
+        ],
+        "originalAssignments": [
+            {
+                "workerId": "w_1",
+                "taskId": "t_1",
+                "startDate": "2026-01-22T07:00:00.000Z",
+                "endDate": "2026-01-22T09:00:00.000Z"
+            },
+            {
+                "workerId": "w_1",
+                "taskId": "t_2",
+                "startDate": "2026-01-22T09:00:00.000Z",
+                "endDate": "2026-01-22T11:00:00.000Z"
+            },
+            {
+                "workerId": "w_1",
+                "taskId": "t_3",
+                "startDate": "2026-01-22T11:00:00.000Z",
+                "endDate": "2026-01-22T13:00:00.000Z"
+            },
+            {
+                "workerId": "w_1",
+                "taskId": "t_4",
+                "startDate": "2026-01-22T13:00:00.000Z",
+                "endDate": "2026-01-22T15:00:00.000Z"
+            },
+            {
+                "workerId": "w_1",
+                "taskId": "t_5",
+                "startDate": "2026-01-22T15:00:00.000Z",
+                "endDate": "2026-01-22T17:00:00.000Z"
+            }
+        ]
+    },
+    "expectedStatus": 200,
+    "invariants": [
+        "no_overlaps",
+        "valid_times",
+        "prereqs_respected",
+        "cascade_correct"
+    ]
+}

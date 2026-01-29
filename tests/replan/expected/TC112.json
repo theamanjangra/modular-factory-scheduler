@@ -1,0 +1,8 @@
+{
+    "id": "TC112",
+    "expectedStatus": 200,
+    "invariants": [
+        "circular_handled"
+    ],
+    "notes": "Auto-generated placeholder. Run oracle to compute expected values for ground_truth cases."
+}

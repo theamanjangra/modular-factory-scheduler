@@ -1,0 +1,602 @@
+{
+  "originalAssignments": [
+    {
+      "workerId": "w_11",
+      "taskId": "t_4",
+      "taskName": "Back Panel",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T10:30:00.000Z"
+    },
+    {
+      "workerId": "w_14",
+      "taskId": "t_4",
+      "taskName": "Back Panel",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T10:30:00.000Z"
+    },
+    {
+      "workerId": "w_8",
+      "taskId": "t_4",
+      "taskName": "Back Panel",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T10:30:00.000Z"
+    },
+    {
+      "workerId": "w_9",
+      "taskId": "t_4",
+      "taskName": "Back Panel",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T10:30:00.000Z"
+    },
+    {
+      "workerId": "w_11",
+      "taskId": "t_7",
+      "taskName": "Exterior Fire Wall Drywall",
+      "startDate": "2024-01-01T16:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_14",
+      "taskId": "t_7",
+      "taskName": "Exterior Fire Wall Drywall",
+      "startDate": "2024-01-01T16:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_17",
+      "taskId": "t_7",
+      "taskName": "Exterior Fire Wall Drywall",
+      "startDate": "2024-01-01T16:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_18",
+      "taskId": "t_7",
+      "taskName": "Exterior Fire Wall Drywall",
+      "startDate": "2024-01-01T16:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_3",
+      "taskId": "t_5",
+      "taskName": "Exterior OSB / Window Nailers",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_4",
+      "taskId": "t_5",
+      "taskName": "Exterior OSB / Window Nailers",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_5",
+      "taskId": "t_5",
+      "taskName": "Exterior OSB / Window Nailers",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_6",
+      "taskId": "t_5",
+      "taskName": "Exterior OSB / Window Nailers",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_1",
+      "taskId": "t_2",
+      "taskName": "Foam all Penetrations",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T09:00:00.000Z"
+    },
+    {
+      "workerId": "w_4",
+      "taskId": "t_3",
+      "taskName": "Insulation Install",
+      "startDate": "2024-01-01T09:00:00.000Z",
+      "endDate": "2024-01-01T10:48:01.000Z"
+    },
+    {
+      "workerId": "w_5",
+      "taskId": "t_3",
+      "taskName": "Insulation Install",
+      "startDate": "2024-01-01T09:00:00.000Z",
+      "endDate": "2024-01-01T10:47:59.000Z"
+    },
+    {
+      "workerId": "w_6",
+      "taskId": "t_3",
+      "taskName": "Insulation Install",
+      "startDate": "2024-01-01T09:00:00.000Z",
+      "endDate": "2024-01-01T10:30:00.000Z"
+    },
+    {
+      "workerId": "w_1",
+      "taskId": "t_9",
+      "taskName": "Interior Tape / Mud 1st Coat",
+      "startDate": "2024-01-01T10:30:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_12",
+      "taskId": "t_9",
+      "taskName": "Interior Tape / Mud 1st Coat",
+      "startDate": "2024-01-01T10:30:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_13",
+      "taskId": "t_9",
+      "taskName": "Interior Tape / Mud 1st Coat",
+      "startDate": "2024-01-01T10:30:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_15",
+      "taskId": "t_9",
+      "taskName": "Interior Tape / Mud 1st Coat",
+      "startDate": "2024-01-01T10:30:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_16",
+      "taskId": "t_9",
+      "taskName": "Interior Tape / Mud 1st Coat",
+      "startDate": "2024-01-01T10:30:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_2",
+      "taskId": "t_9",
+      "taskName": "Interior Tape / Mud 1st Coat",
+      "startDate": "2024-01-01T10:30:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_10",
+      "taskId": "t_6",
+      "taskName": "Roof OSB Decking ",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_7",
+      "taskId": "t_6",
+      "taskName": "Roof OSB Decking ",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_8",
+      "taskId": "t_6",
+      "taskName": "Roof OSB Decking ",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_9",
+      "taskId": "t_6",
+      "taskName": "Roof OSB Decking ",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_2",
+      "taskId": "t_1",
+      "taskName": "Rough Framing Complete ",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T10:00:00.000Z"
+    },
+    {
+      "workerId": "w_3",
+      "taskId": "t_1",
+      "taskName": "Rough Framing Complete ",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T10:00:00.000Z"
+    }
+  ],
+  "adjustedAssignments": [
+    {
+      "workerId": "w_1",
+      "taskId": "t_2",
+      "taskName": "Foam all Penetrations",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T09:00:00.000Z"
+    },
+    {
+      "workerId": "w_11",
+      "taskId": "t_4",
+      "taskName": "Back Panel",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T10:30:00.000Z"
+    },
+    {
+      "workerId": "w_14",
+      "taskId": "t_4",
+      "taskName": "Back Panel",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T10:30:00.000Z"
+    },
+    {
+      "workerId": "w_8",
+      "taskId": "t_4",
+      "taskName": "Back Panel",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T10:30:00.000Z"
+    },
+    {
+      "workerId": "w_9",
+      "taskId": "t_4",
+      "taskName": "Back Panel",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T10:30:00.000Z"
+    },
+    {
+      "workerId": "w_11",
+      "taskId": "t_7",
+      "taskName": "Exterior Fire Wall Drywall",
+      "startDate": "2024-01-01T16:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_14",
+      "taskId": "t_7",
+      "taskName": "Exterior Fire Wall Drywall",
+      "startDate": "2024-01-01T16:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_17",
+      "taskId": "t_7",
+      "taskName": "Exterior Fire Wall Drywall",
+      "startDate": "2024-01-01T16:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_18",
+      "taskId": "t_7",
+      "taskName": "Exterior Fire Wall Drywall",
+      "startDate": "2024-01-01T16:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_3",
+      "taskId": "t_5",
+      "taskName": "Exterior OSB / Window Nailers",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_4",
+      "taskId": "t_5",
+      "taskName": "Exterior OSB / Window Nailers",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_5",
+      "taskId": "t_5",
+      "taskName": "Exterior OSB / Window Nailers",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_6",
+      "taskId": "t_5",
+      "taskName": "Exterior OSB / Window Nailers",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_4",
+      "taskId": "t_3",
+      "taskName": "Insulation Install",
+      "startDate": "2024-01-01T09:00:00.000Z",
+      "endDate": "2024-01-01T10:48:01.000Z"
+    },
+    {
+      "workerId": "w_5",
+      "taskId": "t_3",
+      "taskName": "Insulation Install",
+      "startDate": "2024-01-01T09:00:00.000Z",
+      "endDate": "2024-01-01T10:47:59.000Z"
+    },
+    {
+      "workerId": "w_6",
+      "taskId": "t_3",
+      "taskName": "Insulation Install",
+      "startDate": "2024-01-01T09:00:00.000Z",
+      "endDate": "2024-01-01T10:30:00.000Z"
+    },
+    {
+      "workerId": "w_1",
+      "taskId": "t_9",
+      "taskName": "Interior Tape / Mud 1st Coat",
+      "startDate": "2024-01-01T10:30:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_12",
+      "taskId": "t_9",
+      "taskName": "Interior Tape / Mud 1st Coat",
+      "startDate": "2024-01-01T10:30:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_13",
+      "taskId": "t_9",
+      "taskName": "Interior Tape / Mud 1st Coat",
+      "startDate": "2024-01-01T10:30:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_15",
+      "taskId": "t_9",
+      "taskName": "Interior Tape / Mud 1st Coat",
+      "startDate": "2024-01-01T10:30:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_16",
+      "taskId": "t_9",
+      "taskName": "Interior Tape / Mud 1st Coat",
+      "startDate": "2024-01-01T10:30:00.000Z",
+      "endDate": "2024-01-01T16:00:00.000Z"
+    },
+    {
+      "workerId": "w_10",
+      "taskId": "t_6",
+      "taskName": "Roof OSB Decking ",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_7",
+      "taskId": "t_6",
+      "taskName": "Roof OSB Decking ",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_8",
+      "taskId": "t_6",
+      "taskName": "Roof OSB Decking ",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_9",
+      "taskId": "t_6",
+      "taskName": "Roof OSB Decking ",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T17:00:00.000Z"
+    },
+    {
+      "workerId": "w_2",
+      "taskId": "t_1",
+      "taskName": "Rough Framing Complete ",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T11:00:00.000Z"
+    },
+    {
+      "workerId": "w_3",
+      "taskId": "t_1",
+      "taskName": "Rough Framing Complete ",
+      "startDate": "2024-01-01T07:00:00.000Z",
+      "endDate": "2024-01-01T11:00:00.000Z"
+    },
+    {
+      "workerId": "w_2",
+      "taskId": "t_9",
+      "startDate": "2024-01-01T11:00:00.000Z",
+      "endDate": "2024-01-01T16:30:00.000Z"
+    }
+  ],
+  "diff": {
+    "version": "2026-01-20T19:22:16.698Z",
+    "addedWorkerTasks": [
+      {
+        "workerId": "w_2",
+        "taskId": "t_9",
+        "startDate": "2024-01-01T11:00:00.000Z",
+        "endDate": "2024-01-01T16:30:00.000Z"
+      }
+    ],
+    "removedWorkerTasks": [
+      {
+        "workerId": "w_2",
+        "taskId": "t_9",
+        "startDate": "2024-01-01T10:30:00.000Z",
+        "endDate": "2024-01-01T16:00:00.000Z"
+      }
+    ],
+    "updatedWorkerTasks": [
+      {
+        "workerId": "w_2",
+        "taskId": "t_1",
+        "startDate": "2024-01-01T07:00:00.000Z",
+        "endDate": "2024-01-01T11:00:00.000Z",
+        "previousEndDate": "2024-01-01T10:00:00.000Z"
+      },
+      {
+        "workerId": "w_3",
+        "taskId": "t_1",
+        "startDate": "2024-01-01T07:00:00.000Z",
+        "endDate": "2024-01-01T11:00:00.000Z",
+        "previousEndDate": "2024-01-01T10:00:00.000Z"
+      }
+    ],
+    "impactedTasks": [
+      {
+        "taskId": "t_9",
+        "status": "EXTENDED",
+        "newEndDate": "2024-01-01T16:30:00.000Z",
+        "previousEndDate": "2024-01-01T16:00:00.000Z"
+      },
+      {
+        "taskId": "t_1",
+        "status": "EXTENDED",
+        "newEndDate": "2024-01-01T11:00:00.000Z",
+        "previousEndDate": "2024-01-01T10:00:00.000Z"
+      }
+    ],
+    "deficitTasks": [
+      {
+        "taskId": "t_1",
+        "deficitHours": 2
+      },
+      {
+        "taskId": "t_3",
+        "deficitHours": 2.0999999999999996
+      },
+      {
+        "taskId": "t_4",
+        "deficitHours": 2
+      },
+      {
+        "taskId": "t_5",
+        "deficitHours": 20
+      },
+      {
+        "taskId": "t_6",
+        "deficitHours": 26
+      },
+      {
+        "taskId": "t_7",
+        "deficitHours": 10
+      },
+      {
+        "taskId": "t_8",
+        "deficitHours": 4
+      },
+      {
+        "taskId": "t_9",
+        "deficitHours": 33
+      },
+      {
+        "taskId": "t_10",
+        "deficitHours": 4
+      },
+      {
+        "taskId": "t_11",
+        "deficitHours": 30
+      },
+      {
+        "taskId": "t_12",
+        "deficitHours": 4
+      },
+      {
+        "taskId": "t_13",
+        "deficitHours": 10.5
+      },
+      {
+        "taskId": "t_14",
+        "deficitHours": 4
+      }
+    ],
+    "idleWorkers": [
+      {
+        "workerId": "w_1",
+        "availableFrom": "2024-01-01T16:00:00.000Z"
+      },
+      {
+        "workerId": "w_2",
+        "availableFrom": "2024-01-01T16:30:00.000Z"
+      },
+      {
+        "workerId": "w_3",
+        "availableFrom": "2024-01-01T16:00:00.000Z"
+      },
+      {
+        "workerId": "w_4",
+        "availableFrom": "2024-01-01T16:00:00.000Z"
+      },
+      {
+        "workerId": "w_5",
+        "availableFrom": "2024-01-01T16:00:00.000Z"
+      },
+      {
+        "workerId": "w_6",
+        "availableFrom": "2024-01-01T16:00:00.000Z"
+      },
+      {
+        "workerId": "w_7",
+        "availableFrom": "2024-01-01T17:00:00.000Z"
+      },
+      {
+        "workerId": "w_8",
+        "availableFrom": "2024-01-01T17:00:00.000Z"
+      },
+      {
+        "workerId": "w_9",
+        "availableFrom": "2024-01-01T17:00:00.000Z"
+      },
+      {
+        "workerId": "w_10",
+        "availableFrom": "2024-01-01T17:00:00.000Z"
+      },
+      {
+        "workerId": "w_11",
+        "availableFrom": "2024-01-01T17:00:00.000Z"
+      },
+      {
+        "workerId": "w_12",
+        "availableFrom": "2024-01-01T16:00:00.000Z"
+      },
+      {
+        "workerId": "w_13",
+        "availableFrom": "2024-01-01T16:00:00.000Z"
+      },
+      {
+        "workerId": "w_14",
+        "availableFrom": "2024-01-01T17:00:00.000Z"
+      },
+      {
+        "workerId": "w_15",
+        "availableFrom": "2024-01-01T16:00:00.000Z"
+      },
+      {
+        "workerId": "w_16",
+        "availableFrom": "2024-01-01T16:00:00.000Z"
+      },
+      {
+        "workerId": "w_17",
+        "availableFrom": "2024-01-01T17:00:00.000Z"
+      },
+      {
+        "workerId": "w_18",
+        "availableFrom": "2024-01-01T17:00:00.000Z"
+      }
+    ]
+  },
+  "validation": {
+    "original": {
+      "valid": false,
+      "errors": [
+        "Task Roof OSB Decking  incomplete: 24.00h / 26h",
+        "Task Exterior Fire Wall Drywall incomplete: 4.00h / 10h",
+        "Task Fire Tape Fire Walls incomplete: 0.00h / 4h",
+        "Task Dry Time First Coat incomplete: 0.00h / 4h",
+        "Task Interior Tape / Mud 2nd Coat incomplete: 0.00h / 30h",
+        "Task Dry Time 2nd Coat incomplete: 0.00h / 4h",
+        "Task Exterior Foam Board Insulation  incomplete: 0.00h / 10.5h",
+        "Task Final Sand of Drywall / Texture Prep incomplete: 0.00h / 4h"
+      ]
+    },
+    "adjusted": {
+      "valid": false,
+      "errors": [
+        "Task Roof OSB Decking  incomplete: 24.00h / 26h",
+        "Task Exterior Fire Wall Drywall incomplete: 4.00h / 10h",
+        "Task Fire Tape Fire Walls incomplete: 0.00h / 4h",
+        "Task Dry Time First Coat incomplete: 0.00h / 4h",
+        "Task Interior Tape / Mud 2nd Coat incomplete: 0.00h / 30h",
+        "Task Dry Time 2nd Coat incomplete: 0.00h / 4h",
+        "Task Exterior Foam Board Insulation  incomplete: 0.00h / 10.5h",
+        "Task Final Sand of Drywall / Texture Prep incomplete: 0.00h / 4h"
+      ]
+    }
+  }
+}

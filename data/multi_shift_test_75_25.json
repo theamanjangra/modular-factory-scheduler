@@ -1,0 +1,115 @@
+{
+    "description": "Multi-shift test - 75% Shift1, 25% Shift2 (Typical scenario: day shift does most work, evening shift finishes)",
+    "shift1": {
+        "shiftId": "day_shift",
+        "productionRate": 0.75,
+        "shiftInterval": {
+            "start": "07:00",
+            "end": "15:00"
+        }
+    },
+    "shift2": {
+        "shiftId": "evening_shift",
+        "productionRate": 0.25,
+        "shiftInterval": {
+            "start": "15:00",
+            "end": "23:00"
+        }
+    },
+    "tasks": [
+        {
+            "taskId": "t1",
+            "name": "Wall Batt insulation",
+            "estimatedTotalLaborHours": 5,
+            "estimatedRemainingLaborHours": 5,
+            "minWorkers": 1,
+            "maxWorkers": 2,
+            "shiftCompletionPreference": "mustCompleteWithinShift"
+        },
+        {
+            "taskId": "t2",
+            "name": "Ceiling Rim Insulation",
+            "estimatedTotalLaborHours": 4,
+            "estimatedRemainingLaborHours": 4,
+            "minWorkers": 1,
+            "maxWorkers": 8,
+            "shiftCompletionPreference": "mustCompleteWithinShift"
+        },
+        {
+            "taskId": "t3",
+            "name": "Baffels and Blown In Insulation",
+            "estimatedTotalLaborHours": 5.5,
+            "estimatedRemainingLaborHours": 5.5,
+            "minWorkers": 2,
+            "maxWorkers": 2,
+            "prerequisiteTaskIds": ["t2"],
+            "shiftCompletionPreference": "prefersCompleteWithinShift"
+        },
+        {
+            "taskId": "t4",
+            "name": "Complete Drywall Back Panel",
+            "estimatedTotalLaborHours": 13.5,
+            "estimatedRemainingLaborHours": 13.5,
+            "minWorkers": 1,
+            "maxWorkers": 8,
+            "prerequisiteTaskIds": ["t1"],
+            "shiftCompletionPreference": "doesNotMatter"
+        },
+        {
+            "taskId": "t5",
+            "name": "Complete Exterior Fire Wall",
+            "estimatedTotalLaborHours": 10,
+            "estimatedRemainingLaborHours": 10,
+            "minWorkers": 2,
+            "maxWorkers": 8,
+            "shiftCompletionPreference": "doesNotMatter"
+        },
+        {
+            "taskId": "t6",
+            "name": "Complete Roof 5/8 OSB",
+            "estimatedTotalLaborHours": 13,
+            "estimatedRemainingLaborHours": 13,
+            "minWorkers": 2,
+            "maxWorkers": 8,
+            "shiftCompletionPreference": "doesNotMatter"
+        },
+        {
+            "taskId": "t7",
+            "name": "Complete Exterior OSB",
+            "estimatedTotalLaborHours": 20,
+            "estimatedRemainingLaborHours": 20,
+            "minWorkers": 2,
+            "maxWorkers": 8,
+            "prerequisiteTaskIds": ["t5"],
+            "shiftCompletionPreference": "doesNotMatter"
+        },
+        {
+            "taskId": "t8",
+            "name": "Tape and install windows",
+            "estimatedTotalLaborHours": 5.25,
+            "estimatedRemainingLaborHours": 5.25,
+            "minWorkers": 2,
+            "maxWorkers": 4,
+            "shiftCompletionPreference": "prefersCompleteWithinShift"
+        },
+        {
+            "taskId": "t9",
+            "name": "Interior Tape / Mud 1st Coat",
+            "estimatedTotalLaborHours": 33,
+            "estimatedRemainingLaborHours": 33,
+            "minWorkers": 1,
+            "maxWorkers": 8,
+            "shiftCompletionPreference": "doesNotMatter"
+        },
+        {
+            "taskId": "t10",
+            "name": "Interior Tape / Mud 2nd Coat",
+            "estimatedTotalLaborHours": 16,
+            "estimatedRemainingLaborHours": 16,
+            "minWorkers": 1,
+            "maxWorkers": 8,
+            "prerequisiteTaskIds": ["t9"],
+            "shiftCompletionPreference": "doesNotMatter"
+        }
+    ]
+}

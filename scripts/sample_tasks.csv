@@ -1,0 +1,13 @@
+TaskName,LaborHoursRemaining,PrerequisiteTask,MinWorkers,MaxWorkers
+Wall Batt insulation,5,,1,2
+Baffels and Blown In Insulation,5.5,Ceiling Rim Insulation,2,2
+Ceiling Rim Insulation,4,,1,8
+Complete Drywall Back Panel,13.5,Wall Batt insulation,1,8
+Complete Exterior OSB,20,Complete Exterior Fire Wall,2,8
+Complete Roof 5/8" OSB,13,Complete Exterior OSB,2,8
+Complete Exterior Fire Wall,10,,2,8
+Interior Tape / Mud 1st Coat,33,,1,8
+Interior Tape / Mud 2nd Coat,16,Interior Tape / Mud 1st Coat,1,8
+Complete Exterior R-Max,10.5,,1,8
+Final sand of drywall,2,,1,8
+Tape and install windows,5.25,,2,4

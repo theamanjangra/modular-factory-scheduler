@@ -1,0 +1,692 @@
+[
+    {
+        "id": "TC001",
+        "name": "Increase labor hours - simple task",
+        "category": "labor_increase",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC002",
+        "name": "Increase labor hours by 2",
+        "category": "labor_increase",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC003",
+        "name": "Increase labor hours by 3",
+        "category": "labor_increase",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC004",
+        "name": "Increase labor hours by 4",
+        "category": "labor_increase",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC005",
+        "name": "Increase labor hours by 5",
+        "category": "labor_increase",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC006",
+        "name": "Increase labor hours by 6",
+        "category": "labor_increase",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC007",
+        "name": "Increase labor hours by 7",
+        "category": "labor_increase",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC008",
+        "name": "Increase labor hours by 8",
+        "category": "labor_increase",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC009",
+        "name": "Increase labor hours by 9",
+        "category": "labor_increase",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC0010",
+        "name": "Increase labor hours by 10",
+        "category": "labor_increase",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC011",
+        "name": "Decrease labor hours by 1",
+        "category": "labor_decrease",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC012",
+        "name": "Decrease labor hours by 2",
+        "category": "labor_decrease",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC013",
+        "name": "Decrease labor hours by 3",
+        "category": "labor_decrease",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC014",
+        "name": "Decrease labor hours by 4",
+        "category": "labor_decrease",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC015",
+        "name": "Decrease labor hours by 5",
+        "category": "labor_decrease",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC016",
+        "name": "Decrease labor hours by 6",
+        "category": "labor_decrease",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC017",
+        "name": "Decrease labor hours by 7",
+        "category": "labor_decrease",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC018",
+        "name": "Decrease labor hours by 8",
+        "category": "labor_decrease",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC019",
+        "name": "Decrease labor hours by 9",
+        "category": "labor_decrease",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC020",
+        "name": "Decrease labor hours by 10",
+        "category": "labor_decrease",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC021",
+        "name": "interpretAs total - case 1",
+        "category": "interpret_as",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC022",
+        "name": "interpretAs total - case 2",
+        "category": "interpret_as",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC023",
+        "name": "interpretAs total - case 3",
+        "category": "interpret_as",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC024",
+        "name": "interpretAs total - case 4",
+        "category": "interpret_as",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC025",
+        "name": "interpretAs total - case 5",
+        "category": "interpret_as",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC026",
+        "name": "interpretAs remaining - case 1",
+        "category": "interpret_as",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC027",
+        "name": "interpretAs remaining - case 2",
+        "category": "interpret_as",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC028",
+        "name": "interpretAs remaining - case 3",
+        "category": "interpret_as",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC029",
+        "name": "interpretAs remaining - case 4",
+        "category": "interpret_as",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC030",
+        "name": "interpretAs remaining - case 5",
+        "category": "interpret_as",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC031",
+        "name": "Non-labor task between labor tasks - 1hr wait",
+        "category": "non_labor",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC032",
+        "name": "Non-labor task between labor tasks - 2hr wait",
+        "category": "non_labor",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC033",
+        "name": "Non-labor task between labor tasks - 3hr wait",
+        "category": "non_labor",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC034",
+        "name": "Non-labor task between labor tasks - 4hr wait",
+        "category": "non_labor",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC035",
+        "name": "Non-labor task between labor tasks - 5hr wait",
+        "category": "non_labor",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC036",
+        "name": "Adjust wait task duration to 2hr",
+        "category": "non_labor",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC037",
+        "name": "Adjust wait task duration to 3hr",
+        "category": "non_labor",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC038",
+        "name": "Adjust wait task duration to 4hr",
+        "category": "non_labor",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC039",
+        "name": "Adjust wait task duration to 5hr",
+        "category": "non_labor",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC040",
+        "name": "Adjust wait task duration to 6hr",
+        "category": "non_labor",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC041",
+        "name": "Update 0.5hr after task ended",
+        "category": "after_task_end",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC042",
+        "name": "Update 1hr after task ended",
+        "category": "after_task_end",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC043",
+        "name": "Update 1.5hr after task ended",
+        "category": "after_task_end",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC044",
+        "name": "Update 2hr after task ended",
+        "category": "after_task_end",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC045",
+        "name": "Update 2.5hr after task ended",
+        "category": "after_task_end",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC046",
+        "name": "Update 3hr after task ended",
+        "category": "after_task_end",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC047",
+        "name": "Update 3.5hr after task ended",
+        "category": "after_task_end",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC048",
+        "name": "Update 4hr after task ended",
+        "category": "after_task_end",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC049",
+        "name": "Update 4.5hr after task ended",
+        "category": "after_task_end",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC050",
+        "name": "Update 5hr after task ended",
+        "category": "after_task_end",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC051",
+        "name": "Multiple updates - 2 tasks",
+        "category": "multiple_updates",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC052",
+        "name": "Multiple updates - 3 tasks",
+        "category": "multiple_updates",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC053",
+        "name": "Multiple updates - 4 tasks",
+        "category": "multiple_updates",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC054",
+        "name": "Multiple updates - 5 tasks",
+        "category": "multiple_updates",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC055",
+        "name": "Multiple updates - 5 tasks",
+        "category": "multiple_updates",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC056",
+        "name": "Multiple updates - 5 tasks",
+        "category": "multiple_updates",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC057",
+        "name": "Multiple updates - 5 tasks",
+        "category": "multiple_updates",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC058",
+        "name": "Multiple updates - 5 tasks",
+        "category": "multiple_updates",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC059",
+        "name": "Multiple updates - 5 tasks",
+        "category": "multiple_updates",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC060",
+        "name": "Multiple updates - 5 tasks",
+        "category": "multiple_updates",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC061",
+        "name": "Worker late by 0.5hr",
+        "category": "worker_late",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC062",
+        "name": "Worker late by 1hr",
+        "category": "worker_late",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC063",
+        "name": "Worker late by 1.5hr",
+        "category": "worker_late",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC064",
+        "name": "Worker late by 2hr",
+        "category": "worker_late",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC065",
+        "name": "Worker late by 2.5hr",
+        "category": "worker_late",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC066",
+        "name": "Worker late by 3hr",
+        "category": "worker_late",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC067",
+        "name": "Worker late by 3.5hr",
+        "category": "worker_late",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC068",
+        "name": "Worker late by 4hr",
+        "category": "worker_late",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC069",
+        "name": "Worker late by 4.5hr",
+        "category": "worker_late",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC070",
+        "name": "Worker late by 5hr",
+        "category": "worker_late",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC071",
+        "name": "Worker leaves 1hr early",
+        "category": "worker_early_leave",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC072",
+        "name": "Worker leaves 2hr early",
+        "category": "worker_early_leave",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC073",
+        "name": "Worker leaves 3hr early",
+        "category": "worker_early_leave",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC074",
+        "name": "Worker leaves 4hr early",
+        "category": "worker_early_leave",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC075",
+        "name": "Worker leaves 5hr early",
+        "category": "worker_early_leave",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC076",
+        "name": "Worker leaves 6hr early",
+        "category": "worker_early_leave",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC077",
+        "name": "Worker leaves 7hr early",
+        "category": "worker_early_leave",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC078",
+        "name": "Worker leaves 8hr early",
+        "category": "worker_early_leave",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC079",
+        "name": "Worker leaves 9hr early",
+        "category": "worker_early_leave",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC080",
+        "name": "Worker leaves 10hr early",
+        "category": "worker_early_leave",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC081",
+        "name": "earliestStartDate +2hr",
+        "category": "earliest_start",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC082",
+        "name": "earliestStartDate +4hr",
+        "category": "earliest_start",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC083",
+        "name": "earliestStartDate +6hr",
+        "category": "earliest_start",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC084",
+        "name": "earliestStartDate +8hr",
+        "category": "earliest_start",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC085",
+        "name": "earliestStartDate +10hr",
+        "category": "earliest_start",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC086",
+        "name": "Prerequisite chain length 2",
+        "category": "prerequisites",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC087",
+        "name": "Prerequisite chain length 3",
+        "category": "prerequisites",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC088",
+        "name": "Prerequisite chain length 4",
+        "category": "prerequisites",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC089",
+        "name": "Prerequisite chain length 5",
+        "category": "prerequisites",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC090",
+        "name": "Prerequisite chain length 6",
+        "category": "prerequisites",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC091",
+        "name": "Task requires exactly 1 worker",
+        "category": "worker_constraints",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC092",
+        "name": "Task requires minimum 3 workers",
+        "category": "worker_constraints",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC093",
+        "name": "Task with 0 minWorkers (optional)",
+        "category": "worker_constraints",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC094",
+        "name": "Task with high maxWorkers",
+        "category": "worker_constraints",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC095",
+        "name": "Task needs more workers than available",
+        "category": "worker_constraints",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC096",
+        "name": "Empty updates array",
+        "category": "empty_updates",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC097",
+        "name": "Missing currentTime",
+        "category": "invalid_input",
+        "expectedStatus": 400
+    },
+    {
+        "id": "TC098",
+        "name": "Invalid currentTime format",
+        "category": "invalid_input",
+        "expectedStatus": 400
+    },
+    {
+        "id": "TC099",
+        "name": "Negative laborHoursRemaining",
+        "category": "invalid_input",
+        "expectedStatus": 400
+    },
+    {
+        "id": "TC100",
+        "name": "Missing taskId in update",
+        "category": "invalid_input",
+        "expectedStatus": 400
+    },
+    {
+        "id": "TC101",
+        "name": "Invalid taskId (non-existent)",
+        "category": "invalid_input",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC102",
+        "name": "Missing tasks for ephemeral plan",
+        "category": "invalid_input",
+        "expectedStatus": 400
+    },
+    {
+        "id": "TC103",
+        "name": "Missing workers for ephemeral plan",
+        "category": "invalid_input",
+        "expectedStatus": 400
+    },
+    {
+        "id": "TC104",
+        "name": "Invalid worker update - missing workerId",
+        "category": "invalid_input",
+        "expectedStatus": 400
+    },
+    {
+        "id": "TC105",
+        "name": "Invalid worker update - invalid availability dates",
+        "category": "invalid_input",
+        "expectedStatus": 400
+    },
+    {
+        "id": "TC106",
+        "name": "Full cascade through 3 labor + 2 wait tasks",
+        "category": "complex",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC107",
+        "name": "Worker + task update combined",
+        "category": "complex",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC108",
+        "name": "Parallel tasks both updated",
+        "category": "complex",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC109",
+        "name": "Zero-hour task update",
+        "category": "edge_case",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC110",
+        "name": "Very large hour increase",
+        "category": "edge_case",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC111",
+        "name": "All workers unavailable",
+        "category": "edge_case",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC112",
+        "name": "Circular dependency detection",
+        "category": "edge_case",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC113",
+        "name": "Single worker, single task",
+        "category": "ground_truth",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC114",
+        "name": "2 workers, 2 tasks sequential",
+        "category": "ground_truth",
+        "expectedStatus": 200
+    },
+    {
+        "id": "TC115",
+        "name": "3 workers, 3 tasks parallel",
+        "category": "ground_truth",
+        "expectedStatus": 200
+    }
+]

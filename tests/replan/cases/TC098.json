@@ -1,0 +1,57 @@
+{
+    "id": "TC098",
+    "name": "Invalid currentTime format",
+    "description": "currentTime is not a valid ISO date",
+    "category": "invalid_input",
+    "input": {
+        "currentTime": "not-a-date",
+        "updates": [
+            {
+                "taskId": "t_1",
+                "laborHoursRemaining": 4
+            }
+        ],
+        "tasks": [
+            {
+                "taskId": "t_1",
+                "name": "Task t_1",
+                "estimatedTotalLaborHours": 4,
+                "estimatedRemainingLaborHours": 4,
+                "minWorkers": 1,
+                "maxWorkers": 3,
+                "taskType": "default",
+                "requiredSkills": [
+                    "general"
+                ]
+            }
+        ],
+        "workers": [
+            {
+                "workerId": "w_1",
+                "name": "Worker 1",
+                "availability": {
+                    "startTime": "2026-01-22T07:00:00.000Z",
+                    "endTime": "2026-01-22T21:00:00.000Z"
+                },
+                "skills": [
+                    "general"
+                ]
+            },
+            {
+                "workerId": "w_2",
+                "name": "Worker 2",
+                "availability": {
+                    "startTime": "2026-01-22T07:00:00.000Z",
+                    "endTime": "2026-01-22T21:00:00.000Z"
+                },
+                "skills": [
+                    "general"
+                ]
+            }
+        ],
+        "originalAssignments": []
+    },
+    "expectedStatus": 400,
+    "expectedErrorContains": "valid ISO",
+    "invariants": []
+}

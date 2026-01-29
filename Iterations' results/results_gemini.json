@@ -1,0 +1,285 @@
+{
+    "items": [
+        {
+            "comment": "--- PHASE 1: 08:00 AM START ---"
+        },
+        {
+            "comment": "CRITICAL PATH A: Insulation Team attacks Wall Batt to unlock Back Panel",
+            "workerId": "Greydis Salguera",
+            "taskId": "Wall Batt insulation",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T10:30:00Z"
+        },
+        {
+            "workerId": "Angel Rodriguez",
+            "taskId": "Wall Batt insulation",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T10:30:00Z"
+        },
+        {
+            "comment": "CRITICAL PATH B: Fire Wall Team attacks Fire Wall to unlock Exterior OSB",
+            "workerId": "Nestor Misael Segura Mares",
+            "taskId": "Complete Exterior Fire Wall",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T10:30:00Z"
+        },
+        {
+            "workerId": "Cesar Franco",
+            "taskId": "Complete Exterior Fire Wall",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T10:30:00Z"
+        },
+        {
+            "workerId": "Socorro Jurado",
+            "taskId": "Complete Exterior Fire Wall",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T10:30:00Z"
+        },
+        {
+            "workerId": "Heriberto Hoiguin",
+            "taskId": "Complete Exterior Fire Wall",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T10:30:00Z"
+        },
+        {
+            "comment": "CRITICAL PATH C: Mudding Team starts the longest task of the day immediately",
+            "workerId": "Alvaro Rincon Salazar",
+            "taskId": "Interior Tape / Mud 1st Coat",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T14:36:00Z"
+        },
+        {
+            "workerId": "Jose Lopez",
+            "taskId": "Interior Tape / Mud 1st Coat",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T14:36:00Z"
+        },
+        {
+            "workerId": "Fabian Perez",
+            "taskId": "Interior Tape / Mud 1st Coat",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T14:36:00Z"
+        },
+        {
+            "workerId": "Julio Aguilar Huerta",
+            "taskId": "Interior Tape / Mud 1st Coat",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T14:36:00Z"
+        },
+        {
+            "workerId": "Julio C",
+            "taskId": "Interior Tape / Mud 1st Coat",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T14:36:00Z"
+        },
+        {
+            "comment": "SECONDARY TASKS: Remaining workers handle Independent tasks",
+            "workerId": "Jose Alfredo Galaviz",
+            "taskId": "Ceiling Rim Insulation",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T10:00:00Z"
+        },
+        {
+            "workerId": "Neudys Perez Santana",
+            "taskId": "Ceiling Rim Insulation",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T10:00:00Z"
+        },
+        {
+            "workerId": "Carlos Lopez",
+            "taskId": "Tape and install windows",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T13:15:00Z"
+        },
+        {
+            "workerId": "Uriel Ruiz Cruz",
+            "taskId": "Complete Roof 5/8 OSB",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T10:30:00Z"
+        },
+        {
+            "workerId": "Luis Ramon Munguia",
+            "taskId": "Complete Roof 5/8 OSB",
+            "startTime": "2025-11-25T08:00:00Z",
+            "endTime": "2025-11-25T10:30:00Z"
+        },
+        {
+            "comment": "--- PHASE 2: 10:30 AM TRANSITION ---"
+        },
+        {
+            "comment": "Pre-reqs met. Mass reassignment to heavy tasks (Ext OSB & Back Panel)",
+            "workerId": "Greydis Salguera",
+            "taskId": "Baffels and Blown In Insulation",
+            "startTime": "2025-11-25T10:30:00Z",
+            "endTime": "2025-11-25T13:15:00Z"
+        },
+        {
+            "workerId": "Angel Rodriguez",
+            "taskId": "Baffels and Blown In Insulation",
+            "startTime": "2025-11-25T10:30:00Z",
+            "endTime": "2025-11-25T13:15:00Z"
+        },
+        {
+            "comment": "Swarm Exterior OSB (20h) with 4 Primary Skill workers to finish by afternoon",
+            "workerId": "Jose Alfredo Galaviz",
+            "taskId": "Complete Exterior OSB",
+            "startTime": "2025-11-25T10:30:00Z",
+            "endTime": "2025-11-25T15:30:00Z"
+        },
+        {
+            "workerId": "Neudys Perez Santana",
+            "taskId": "Complete Exterior OSB",
+            "startTime": "2025-11-25T10:30:00Z",
+            "endTime": "2025-11-25T15:30:00Z"
+        },
+        {
+            "workerId": "Uriel Ruiz Cruz",
+            "taskId": "Complete Exterior OSB",
+            "startTime": "2025-11-25T10:30:00Z",
+            "endTime": "2025-11-25T15:30:00Z"
+        },
+        {
+            "workerId": "Luis Ramon Munguia",
+            "taskId": "Complete Exterior OSB",
+            "startTime": "2025-11-25T10:30:00Z",
+            "endTime": "2025-11-25T15:30:00Z"
+        },
+        {
+            "comment": "Swarm Drywall Back Panel with remaining available workers",
+            "workerId": "Socorro Jurado",
+            "taskId": "Complete Drywall Back Panel",
+            "startTime": "2025-11-25T10:30:00Z",
+            "endTime": "2025-11-25T13:54:00Z"
+        },
+        {
+            "workerId": "Heriberto Hoiguin",
+            "taskId": "Complete Drywall Back Panel",
+            "startTime": "2025-11-25T10:30:00Z",
+            "endTime": "2025-11-25T13:54:00Z"
+        },
+        {
+            "workerId": "Nestor Misael Segura Mares",
+            "taskId": "Complete Drywall Back Panel",
+            "startTime": "2025-11-25T10:30:00Z",
+            "endTime": "2025-11-25T13:54:00Z"
+        },
+        {
+            "workerId": "Cesar Franco",
+            "taskId": "Complete Drywall Back Panel",
+            "startTime": "2025-11-25T10:30:00Z",
+            "endTime": "2025-11-25T13:54:00Z"
+        },
+        {
+            "comment": "--- PHASE 3: AFTERNOON CLEANUP ---"
+        },
+        {
+            "comment": "Workers freed from Baffels and Windows return to finish the Roof",
+            "workerId": "Greydis Salguera",
+            "taskId": "Complete Roof 5/8 OSB",
+            "startTime": "2025-11-25T13:15:00Z",
+            "endTime": "2025-11-25T16:05:00Z"
+        },
+        {
+            "workerId": "Angel Rodriguez",
+            "taskId": "Complete Roof 5/8 OSB",
+            "startTime": "2025-11-25T13:15:00Z",
+            "endTime": "2025-11-25T16:05:00Z"
+        },
+        {
+            "workerId": "Carlos Lopez",
+            "taskId": "Complete Exterior R-Max",
+            "startTime": "2025-11-25T13:15:00Z",
+            "endTime": "2025-11-25T15:52:00Z"
+        },
+        {
+            "comment": "Workers freed from Back Panel jump to R-Max",
+            "workerId": "Socorro Jurado",
+            "taskId": "Complete Exterior R-Max",
+            "startTime": "2025-11-25T13:54:00Z",
+            "endTime": "2025-11-25T16:30:00Z"
+        },
+        {
+            "workerId": "Heriberto Hoiguin",
+            "taskId": "Complete Exterior R-Max",
+            "startTime": "2025-11-25T13:54:00Z",
+            "endTime": "2025-11-25T16:30:00Z"
+        },
+        {
+            "workerId": "Nestor Misael Segura Mares",
+            "taskId": "Complete Exterior R-Max",
+            "startTime": "2025-11-25T13:54:00Z",
+            "endTime": "2025-11-25T16:30:00Z"
+        },
+        {
+            "workerId": "Cesar Franco",
+            "taskId": "Complete Exterior R-Max",
+            "startTime": "2025-11-25T13:54:00Z",
+            "endTime": "2025-11-25T16:30:00Z"
+        },
+        {
+            "comment": "Workers freed from Ext OSB (at 15:30) help finish Roof",
+            "workerId": "Jose Alfredo Galaviz",
+            "taskId": "Complete Roof 5/8 OSB",
+            "startTime": "2025-11-25T15:30:00Z",
+            "endTime": "2025-11-25T16:05:00Z"
+        },
+        {
+            "workerId": "Neudys Perez Santana",
+            "taskId": "Complete Roof 5/8 OSB",
+            "startTime": "2025-11-25T15:30:00Z",
+            "endTime": "2025-11-25T16:05:00Z"
+        },
+        {
+            "workerId": "Uriel Ruiz Cruz",
+            "taskId": "Complete Roof 5/8 OSB",
+            "startTime": "2025-11-25T15:30:00Z",
+            "endTime": "2025-11-25T16:05:00Z"
+        },
+        {
+            "workerId": "Luis Ramon Munguia",
+            "taskId": "Complete Roof 5/8 OSB",
+            "startTime": "2025-11-25T15:30:00Z",
+            "endTime": "2025-11-25T16:05:00Z"
+        },
+        {
+            "comment": "--- PHASE 4: FINAL PUSH (Mud 2nd Coat) ---"
+        },
+        {
+            "comment": "Mud Team finishes 1st coat, immediately starts 2nd coat. Carlos joins them late.",
+            "workerId": "Alvaro Rincon Salazar",
+            "taskId": "Interior Tape / Mud 2nd Coat",
+            "startTime": "2025-11-25T14:36:00Z",
+            "endTime": "2025-11-25T17:18:00Z"
+        },
+        {
+            "workerId": "Jose Lopez",
+            "taskId": "Interior Tape / Mud 2nd Coat",
+            "startTime": "2025-11-25T14:36:00Z",
+            "endTime": "2025-11-25T17:18:00Z"
+        },
+        {
+            "workerId": "Fabian Perez",
+            "taskId": "Interior Tape / Mud 2nd Coat",
+            "startTime": "2025-11-25T14:36:00Z",
+            "endTime": "2025-11-25T17:18:00Z"
+        },
+        {
+            "workerId": "Julio Aguilar Huerta",
+            "taskId": "Interior Tape / Mud 2nd Coat",
+            "startTime": "2025-11-25T14:36:00Z",
+            "endTime": "2025-11-25T17:18:00Z"
+        },
+        {
+            "workerId": "Julio C",
+            "taskId": "Interior Tape / Mud 2nd Coat",
+            "startTime": "2025-11-25T14:36:00Z",
+            "endTime": "2025-11-25T17:18:00Z"
+        },
+        {
+            "workerId": "Carlos Lopez",
+            "taskId": "Interior Tape / Mud 2nd Coat",
+            "startTime": "2025-11-25T15:52:00Z",
+            "endTime": "2025-11-25T17:18:00Z"
+        }
+    ]
+}

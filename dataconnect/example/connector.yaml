@@ -1,0 +1,10 @@
+# connectorId: "vos-web"
+
+connectorId: vos-web
+generate:
+  javascriptSdk:
+    outputDir: ../../src/dataconnect-generated/example
+    package: "@dataconnect/generated"
+    packageJsonDir: ../..
+    react: false
+    angular: false

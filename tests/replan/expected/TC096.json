@@ -1,0 +1,8 @@
+{
+    "id": "TC096",
+    "expectedStatus": 200,
+    "invariants": [
+        "no_changes"
+    ],
+    "notes": "Auto-generated placeholder. Run oracle to compute expected values for ground_truth cases."
+}
