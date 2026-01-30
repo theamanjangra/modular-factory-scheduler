@@ -21,6 +21,10 @@ schema:
 
 # Path to connector definitions (queries, mutations, subscriptions)
 connectorDirs:
-  - "./example"
-  - "./chat"
+  - "./connectors"
+
+generate:
+  javascriptSdk:
+    outputDir: "../client/src/generated"
+    package: "@vederra/sdk"
 
