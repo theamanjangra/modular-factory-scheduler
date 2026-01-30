@@ -6,6 +6,7 @@ import type { AdjustmentResult } from '../types';
 import PlanAdjustmentPanel from './PlanAdjustmentPanel';
 import { formatInTimeZone } from 'date-fns-tz';
 import { FACTORY_TIMEZONE, timeToIso, getTimezoneAbbr } from '../utils/timezone';
+import { MasterDataSelectors } from './MasterDataSelectors';
 
 /**
  * Calculate dynamic shift dates based on current time IN FACTORY TIMEZONE.
@@ -57,6 +58,15 @@ export const ResultsPage = () => {
     const [adjustmentResult, setAdjustmentResult] = useState<AdjustmentResult | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // NEW: DB Selections State
+    const [dbSelections, setDbSelections] = useState<{
+        shift1Id?: string;
+        shift2Id?: string;
+        departmentId?: string;
+        moduleProfileId?: string;
+        travelerTemplateId?: string;
+    }>({});
+
     const schedulingConfig: SchedulingConfig = {
         minAssignmentMinutes,
         timeStepMinutes,
@@ -102,7 +112,15 @@ export const ResultsPage = () => {
 
 
     const handleRunMultiShift = () => {
-        if (!fileInputRef.current?.files?.[0]) return;
+        if (!fileInputRef.current?.files?.[0]) {
+            // Future: Allow running without file if DB selections are present
+            if (dbSelections.moduleProfileId && dbSelections.travelerTemplateId) {
+                console.log("Running from DB Selections (Simulation):", dbSelections);
+                // Note: Actual implementation deferred until backend endpoint exists
+            }
+            return;
+        }
+
         setAdjustmentResult(null); // Clear previous adjustment on new run
         const { shift1Date, shift2Date } = shiftDates;
         // Build wall-clock ISO (no timezone conversion; matches backend expectations).
@@ -150,8 +168,6 @@ export const ResultsPage = () => {
         exportMultiShift(fileInputRef.current.files[0], options);
     };
 
-
-
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-blue-200 p-4">
             <div className="max-w-[1600px] mx-auto space-y-6">
@@ -164,9 +180,14 @@ export const ResultsPage = () => {
                         </div>
                         <div>
                             <h1 className="text-lg font-bold text-gray-900 tracking-tight leading-none">Minimalist Planner</h1>
-                            <span className="text-xs font-medium text-gray-500">Version 2.1</span>
+                            <span className="text-xs font-medium text-gray-500">Version 2.2</span>
                         </div>
                     </div>
+
+                    <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block"></div>
+
+                    {/* NEW: DB Selectors */}
+                    <MasterDataSelectors onSelectionChange={setDbSelections} />
 
                     <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block"></div>
 
