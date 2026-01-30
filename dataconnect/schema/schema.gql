@@ -3,11 +3,13 @@
 # =====================
 
 type User @table {
-  id: String!
-  email: String! @unique
+  id: UUID! @default(expr: "uuidV4()")
+  firebaseUserId:String
+  email: String @unique
   firstname: String!
   lastname: String!
-  role: String!
+  phone:String! @unique
+  type: UserType!
   lastActivity: Timestamp
   createdAt: Timestamp!
   updatedAt: Timestamp!
@@ -17,147 +19,150 @@ type User @table {
 # Enums
 # =====================
 
-enum TaskStatus {
-  pending
+
+enum TaskInterruptionReason {
+  materials
+  equipment
+  other
+}
+
+enum ApplicationStatus {
+  submitted
+  reviewed
   approved
   rejected
 }
-enum LeadType {
-  closeup
-  drywall
-  electrical
-  exterior
-  floors
-  hvac
-  insulation
-  interior
-  office
-  paint
-  plumbing
-  roofing
-  shipping
-  walls
+
+enum AvailabilityType {
+  fullTime
+  partTime
+  temporary
 }
-enum NoteType {
-  approval
-  rejection
-  photoOnly
-  move
-  moveRequest
-  normal
+
+enum PrimaryExperienceType {
+  residential
+  commercial
 }
-enum StorageDirectory {
-  settings
-  travelers
-  temp
-}
-enum Skill {
+
+enum TradeSkill {
   framing
-  finishCarpentry
-  electricalTrim
-  electricalRough
-  plumbing
-  drywallHanging
-  drywallMud
-  texture
-  painting
   roofing
+  siding
+  drywallTaping
+  painting
+  plumbing
   flooring
-  boxMoving
-  cutting
-  hvac
-}
-enum ModuleCharacteristicType {
-  squareFeet
-  linearFeetExteriorWalls
-  linearFeetInteriorWalls
-  countInteriorWalls
-  countToilets
-  countSinks
-  countWindows
-  countExteriorDoors
-  countInteriorDoors
-  squareFeetExteriorCloseUp
-  squareFeetRoofing
-  linearFeetCabinets
-  countElectricalTerminals
-  linearFeetFirewall
-  countStairs
-  hasHvacDucting
-}
-enum WorkerRole {
-  worker
-  lead
-  qam
-  supervisor
-  admin
-}
-enum IssueType {
-  materialShortage
-  mistake
-}
-enum PtoRequestStatus {
-  pending
-  approved
-  rejected
-}
-enum PtoType {
-  sick
-  vacation
-  juryDuty
-  bereavement
-  court
-}
-# =====================
-# Master Data
-# =====================
-
-type Shift @table {
-  id: String!
-  name: String!
-  startTime: Timestamp
-  endTime: Timestamp
+  trimFinishCarpentry
+  cabinetInstallation
+  electrical
+  other
 }
 
-type Department @table {
-  id: String!
-  name: String!
+enum ToolType {
+  handTools
+  nailGuns
+  laddersScaffolding
+  powerSaws
+  drillsImpactDrivers
+  cranes
+  heavyEquipment
+  other
 }
+
+
+
+
+enum ModuleAttributeType {
+  number
+  boolean
+}
+enum WorkerTaskPreference {
+  primaryJob
+  secondaryJob
+  canHelp
+  canNotHelp
+}
+
+
+enum TaskType {
+  default
+  subassembly
+  nonWorker
+}
+
+enum SubassemblyTaskScheduleType {
+  oneStationAhead
+  twoStationsAhead
+  oneStationBehind
+}
+
+
+enum TaskStatus { pending approved rejected }
+enum LeadType { closeup drywall electrical exterior floors hvac insulation interior office paint plumbing roofing shipping walls }
+enum NoteType { approval rejection photoOnly move moveRequest normal }
+enum StorageDirectory { settings travelers temp }
+enum Skill { framing finishCarpentry electricalTrim electricalRough plumbing drywallHanging drywallMud texture painting roofing flooring boxMoving cutting hvac }
+enum ModuleCharacteristicType { squareFeet linearFeetExteriorWalls linearFeetInteriorWalls countInteriorWalls countToilets countSinks countWindows countExteriorDoors countInteriorDoors squareFeetExteriorCloseUp squareFeetRoofing linearFeetCabinets countElectricalTerminals linearFeetFirewall countStairs hasHvacDucting }
+enum WorkerRole { worker lead qam supervisor admin }
+enum IssueType { materialShortage mistake }
+enum PtoRequestStatus { pending approved rejected }
+enum PtoType { sick vacation juryDuty bereavement court }
+enum ProjectContactRole { superIntendant projectManager purchaser owner }
+enum UserType { worker office customer }
+enum WarrantyCategory { framing electrical plumbing hvac drywall paint flooring cabinets windowsDoors exterior roofing appliances }
+enum WarrantyPriority { low medium high }
+enum WarrantyStatus { pending approved rejected }
+enum ExtraClockTimeType {beforeOpen afterClose }
 
 # =====================
 # Core Project Structure
 # =====================
 
 type Project @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   name: String
 }
 
 type ModuleProfile @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   name: String
   project: Project
 }
 
 type ModuleCharacteristic @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   moduleProfile: ModuleProfile!
   characteristicType: ModuleCharacteristicType
   value: Float
 }
 
+type Module @table {
+  id: UUID! @default(expr: "uuidV4()")
+  traveler: Traveler                
+  travelerTemplate: TravelerTemplate!
+  moduleProfile: ModuleProfile!
+  serialNumber: String
+  order: Int
+}
+
 type TravelerTemplate @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   name: String
+  createdAt: Timestamp
+  updatedAt: Timestamp
 }
 
 type Traveler @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   travelerTemplate: TravelerTemplate!
   moduleProfile: ModuleProfile
   isShipped: Boolean
   notesRequiredUpload: Boolean
+  module: Module!
   serialNumber: String
+  sibling: Traveler
+  createdAt: Timestamp
+  updatedAt: Timestamp
 }
 
 # =====================
@@ -165,22 +170,24 @@ type Traveler @table {
 # =====================
 
 type InspectionArea @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   name: String
   order: Int
+  createdAt: Timestamp
+  updatedAt: Timestamp
 }
 
 type Station @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   inspectionArea: InspectionArea
   name: String
   order: Int
   doesReceiveTravelers: Boolean
+  canReceiveMultipleTravelers: Boolean
 }
 
-# ✅ join table for Traveler <-> Station (with id)
 type TravelerStation @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   traveler: Traveler!
   station: Station!
   leadInspectionProgress: Float
@@ -193,18 +200,21 @@ type TravelerStation @table {
 # Inspection System
 # =====================
 
-type InspectionItemTemplate @table {
-  id: String!
+# This is will Inspection Item in ios
+type InspectionItemTemplate @table { 
+  id: UUID! @default(expr: "uuidV4()")
   inspectionArea: InspectionArea!
-  leadType: LeadType
+  department: Department
   name: String
+  description: String
   order: Int
   isPhotoRequired: Boolean
   isVideoRequired: Boolean
 }
 
+# This will be Inspection Task in ios
 type InspectionItem @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   inspectionItemTemplate: InspectionItemTemplate!
   traveler: Traveler!
   isMoveRequested: Boolean
@@ -218,22 +228,34 @@ type InspectionItem @table {
 # Task System
 # =====================
 
+# This will be QAItem in ios
+
+
+ 
 type TaskTemplate @table {
-  id: String!
-  station: Station
-  leadType: LeadType
-  name: String
-  order: Int
-  isPhotoRequired: Boolean
-  isVideoRequired: Boolean
-  minWorkers: Int
-  maxWorkers: Int
-  rankedSkills: [Skill]
-  moduleCharacteristicType: ModuleCharacteristicType
+  id: UUID! @default(expr: "uuidV4()")
+  station: Station!
+  department: Department!
+  taskType: TaskType!
+  name: String!
+  description: String
+  order: Int!
+  isPhotoRequired: Boolean! @default(value: false)
+  isVideoRequired: Boolean! @default(value: false)
+  minWorkers: Int!
+  maxWorkers: Int!
+  rankedSkills: [Skill!]
+  prerequisiteTaskTemplate: TaskTemplate
+  nonWorkerTaskDuration: Float
+  subassemblyTaskReleaseStation: Station
 }
 
+
+
+
+# This will be QATask
 type Task @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   taskTemplate: TaskTemplate!
   traveler: Traveler!
   isMoveRequested: Boolean
@@ -249,13 +271,13 @@ type Task @table {
 # =====================
 
 type AdhocTask @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   traveler: Traveler!
   station: Station!
   isMoveRequested: Boolean
   isMoved: Boolean
   newStation: Station
-  leadType: LeadType
+  department: Department
   leadStatus: TaskStatus
   qamStatus: TaskStatus
   order: Int
@@ -264,13 +286,13 @@ type AdhocTask @table {
 }
 
 type AdhocInspectionItem @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   traveler: Traveler!
   inspectionArea: InspectionArea!
   isMoveRequested: Boolean
   isMoved: Boolean
   newInspectionArea: InspectionArea
-  leadType: LeadType
+  department: Department
   leadStatus: TaskStatus
   qamStatus: TaskStatus
   order: Int
@@ -283,7 +305,7 @@ type AdhocInspectionItem @table {
 # =====================
 
 type Issue @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   task: Task
   inspectionItem: InspectionItem
   name: String
@@ -297,23 +319,24 @@ type Issue @table {
 # =====================
 
 type Worker @table {
-  id: String!
-  station: Station
+  id: UUID! @default(expr: "uuidV4()")
+  station: Station!
+  shift: Shift
+  newStation: Station
   employeeId: String
   firstName: String
   lastName: String
-  leadTypes: [LeadType]
   passcode: String
+  phone: String
   role: WorkerRole
-  newStation: Station
   rankedSkills: [Skill]
   customClockInDate: Timestamp
   customClockOutDate: Timestamp
+  canClockExtraTime: Boolean
 }
 
-# ✅ worker-task join table with id
 type WorkerTask @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   worker: Worker!
   task: Task!
   startDate: Timestamp
@@ -322,8 +345,9 @@ type WorkerTask @table {
   scheduledEndDate: Timestamp
 }
 
+# This will be TimeLogEntry in ios
 type TimeLog @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   worker: Worker!
   officialClockInDate: Timestamp
   officialClockOutDate: Timestamp
@@ -336,7 +360,8 @@ type TimeLog @table {
 # =====================
 
 type Note @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
+  user:User
   text: String
   type: NoteType
   traveler: Traveler
@@ -344,10 +369,13 @@ type Note @table {
   inspectionItem: InspectionItem
   adhocTask: AdhocTask
   adhocInspectionItem: AdhocInspectionItem
+  warrantyClaim: WarrantyClaims
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
 }
 
 type ManagedFile @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   contentType: String
   filename: String
   isUploaded: Boolean
@@ -362,10 +390,98 @@ type ManagedFile @table {
 }
 
 # =====================
-# Pto Requests
+# Short-named Mapping Tables
 # =====================
+
+type TravelerTemplateInspectionItemTemplate @table(name: "traveler_template_inspection_item_template") {
+  id: UUID! @default(expr: "uuidV4()")
+  travelerTemplate: TravelerTemplate! @ref(constraintName: "fk_ttiit_trv")
+  inspectionItemTemplate: InspectionItemTemplate! @ref(constraintName: "fk_ttiit_tmp")
+}
+
+type TravelerTemplateTaskTemplate @table(name: "traveler_template_task_template") {
+  id: UUID! @default(expr: "uuidV4()")
+  travelerTemplate: TravelerTemplate! @ref(constraintName: "fk_ttt_trv")
+  taskTemplate: TaskTemplate! @ref(constraintName: "fk_ttt_tmp")
+}
+
+# =====================
+# Shift Table
+# =====================
+
+type Shift @table {
+  id: UUID! @default(expr: "uuidV4()")
+  name: String
+  startTime: Timestamp
+  endTime: Timestamp
+  lunchStartTime: Timestamp
+  lunchEndTime: Timestamp
+  weekdayOrdinals: [Int]
+}
+
+# This will be LeadType in ios
+type Department @table {
+  id: UUID! @default(expr: "uuidV4()")
+  name: String
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+
+type WorkerDepartment @table {
+  id: UUID! @default(expr: "uuidV4()")
+  worker: Worker!
+  department: Department!
+  isLead: Boolean
+}
+
+type ModuleAttribute @table {
+  id: UUID! @default(expr: "uuidV4()")
+  name: String!
+  moduleAttributeType: ModuleAttributeType!
+}
+
+type ModuleProfileModuleAttribute @table(name: "module_profile_module_attribute") {
+  id: UUID! @default(expr: "uuidV4()")
+  moduleProfile: ModuleProfile! @ref(constraintName: "fk_mpma_moduleProfile")
+  moduleAttribute: ModuleAttribute! @ref(constraintName: "fk_mpma_moduleAttribute")
+  value: String!
+}
+
+type TaskTemplateModuleAttribute @table(name: "task_template_module_attribute") {
+  id: UUID! @default(expr: "uuidV4()")
+  taskTemplate: TaskTemplate! @ref(constraintName: "fk_ttma_taskTemplate")
+  moduleAttribute: ModuleAttribute! @ref(constraintName: "fk_mpma_moduleAttribute")
+}
+# =====================
+# Chat System
+# =====================
+
+type ChatSession @table {
+  id: UUID! @default(expr: "uuidV4()")
+  userId: String
+  metadata: String 
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  expiresAt: Timestamp!
+}
+
+
+type ChatMessage @table {
+  id: UUID! @default(expr: "uuidV4()")
+  session: ChatSession!
+  role: String! # 'user' or 'assistant'
+  content: String!
+  timestamp: Timestamp!
+  attachmentType: String     
+  attachmentFilename: String  
+}
+
+# =====================
+# PTO Management
+# =====================
+
 type PtoRequest @table {
-  id: String!
+  id: UUID! @default(expr: "uuidV4()")
   worker: Worker!
   startDate: Timestamp
   endDate: Timestamp
@@ -373,49 +489,255 @@ type PtoRequest @table {
   hoursRequested: Float
   note: String
   status: PtoRequestStatus
+  googleCalendarEventId: String
+  updatedAt: Timestamp
+  createdAt: Timestamp
 }
 
-# =====================
-# Short-named Mapping Tables
-# =====================
-
-type TravelerTemplateInspectionItemTemplate
-  @table(name: "traveler_template_inspection_item_template") {
-  id: String!
-  travelerTemplate: TravelerTemplate! @ref(constraintName: "fk_ttiit_trv")
-  inspectionItemTemplate: InspectionItemTemplate!
-    @ref(constraintName: "fk_ttiit_tmp")
+type TimeStudy @table {
+  id: UUID! @default(expr: "uuidV4()")
+  taskTemplate: TaskTemplate!
+  module: Module
+  date: Timestamp
+  workerCount: Int
+  clockTime: Float
+  notes: String
 }
 
-type TravelerTemplateTaskTemplate
-  @table(name: "traveler_template_task_template") {
-  id: String!
-  travelerTemplate: TravelerTemplate! @ref(constraintName: "fk_ttt_trv")
-  taskTemplate: TaskTemplate! @ref(constraintName: "fk_ttt_tmp")
+
+type TimeStudyModuleAttribute @table(name: "time_study_module_attribute") {
+  id: UUID! @default(expr: "uuidV4()")
+  timeStudy: TimeStudy!
+  moduleAttribute: ModuleAttribute!
+  value: String!
 }
 
-# =====================
-# Chat System
-# =====================
 
-type ChatSession @table {
-  id: String!
-  userId: String
-  metadata: String # JSON string
+type ProjectContact @table {
+  id: UUID! @default(expr: "uuidV4()")
+  user: User
+  firstname: String!
+  lastname: String!
+  project: Project!
+  role: ProjectContactRole!
+  phone: String!
   createdAt: Timestamp!
   updatedAt: Timestamp!
-  expiresAt: Timestamp!
 }
 
-type ChatMessage @table {
-  id: String!
-  session: ChatSession!
-  sessionId: String!
-  role: String! # 'user' or 'assistant'
-  content: String!
-  timestamp: Timestamp!
+# ----------------------------------------------------
+# 1. Device Table: Stores the FCM Token for each worker
+# ----------------------------------------------------
+type Device @table {
 
-  # Attachment metadata for PDF uploads
-  attachmentType: String      # 'pdf' | null
-  attachmentFilename: String  # Original filename or null
+    id: UUID! @default(expr: "uuidV4()")
+ 
+    deviceId:String!
+
+    worker: Worker! 
+
+    fcmToken: String! 
+
+    lastSeen: Timestamp! 
+
+}
+
+# ----------------------------------------------------
+# 2. Notifications Queue Table: The trigger for the sender
+# ----------------------------------------------------
+type Notification @table {
+    id: UUID! @default(expr: "uuidV4()")
+    worker: Worker! 
+    title: String! 
+    body: String! 
+    isSent: Boolean!
+    isRead: Boolean!
+    createdAt: Timestamp!
+}
+
+type WarrantyClaims @table {
+  id: UUID! @default(expr: "uuidV4()")
+  user: User!
+  project: Project
+  claimNumber: Int
+  serialNumber: Int
+  category: WarrantyCategory
+  priority: WarrantyPriority
+  status: WarrantyStatus
+  description: String
+  photos: [String]
+  updatedAt: Timestamp
+  createdAt: Timestamp
+}
+
+
+type WorkerTaskTemplate @table(name: "worker_task_template") {
+  id: UUID! @default(expr: "uuidV4()")
+  worker: Worker!
+  taskTemplate: TaskTemplate!
+  preference: WorkerTaskPreference!
+}
+
+
+
+type Applicant @table {
+  id: UUID! @default(expr: "uuidV4()")
+
+  firstName: String!
+  middleName: String
+  lastName: String!
+
+  phone: String
+  email: String @unique
+
+  streetAddress: String
+  city: String
+  state: String
+  zipCode: String
+
+  authorizedUsWork: Boolean
+  hasColoradoDriversLicense: Boolean
+
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+}
+
+
+type JobApplication @table {
+  id: UUID! @default(expr: "uuidV4()")
+
+  applicant: Applicant!
+
+  yearsConstructionExperience: Int
+  constructionExperienceDescription: String
+
+  ownsOwnTools: Boolean
+  additionalInformation: String
+
+  certifiedTruthful: Boolean!
+  certifiedAt: Timestamp
+
+  status: ApplicationStatus!
+  submittedAt: Timestamp!
+
+}
+type ApplicationAvailability @table {
+  id: UUID! @default(expr: "uuidV4()")
+
+  application: JobApplication!
+  type: AvailabilityType!
+}
+type ApplicationPrimaryExperience @table {
+  id: UUID! @default(expr: "uuidV4()")
+
+  application: JobApplication!
+  type: PrimaryExperienceType!
+}
+type ApplicationTradeSkill @table {
+  id: UUID! @default(expr: "uuidV4()")
+
+  application: JobApplication!
+  skill: TradeSkill!
+
+  yearsExperience: Float
+  otherText: String
+}
+type ApplicationTool @table {
+  id: UUID! @default(expr: "uuidV4()")
+
+  application: JobApplication!
+  tool: ToolType!
+
+  specifyText: String
+}
+type WorkHistory @table {
+  id: UUID! @default(expr: "uuidV4()")
+
+  application: JobApplication!
+
+  employerName: String
+  dateStarted: Date
+  dateEnded: Date
+
+  supervisorName: String
+  supervisorPhone: String
+
+  reasonForLeaving: String
+  sortOrder: Int
+}
+type ApplicationReference @table {
+  id: UUID! @default(expr: "uuidV4()")
+
+  application: JobApplication!
+
+  name: String!
+  company: String
+  phone: String
+  relationship: String
+
+  sortOrder: Int
+}
+
+type ExtraClockTime @table {
+  id: UUID! @default(expr: "uuidV4()")  
+  worker: Worker
+  department: Department
+  date: Timestamp!
+  duration: Float!
+  type:ExtraClockTimeType!
+}
+
+type TravelerInspectionArea @table {
+  id: UUID! @default(expr: "uuidV4()")
+  inspectionArea: InspectionArea!
+  traveler: Traveler!
+  leadInspectionProgress: Float!
+  qamInspectionProgress: Float!
+  isCurrent: Boolean!
+}
+
+
+
+type TaskInterruption @table {
+  id: UUID! @default(expr: "uuidV4()")
+
+  task: Task! @ref
+
+  reason: TaskInterruptionReason!
+
+  startDate: Timestamp!
+  endDate: Timestamp
+
+  maxWorkersDuringInterruption: Int
+
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+}
+
+
+# =====================
+# Production Plan Shift Mapping
+# =====================
+
+type ProductionPlanShift @table(name: "production_plan_shift") {
+  id: UUID! @default(expr: "uuidV4()")
+
+  productionPlan: ProductionPlan!
+    @ref(constraintName: "fk_pps_production_plan")
+
+  shift: Shift!
+    @ref(constraintName: "fk_pps_shift")
+
+  isStartingShift: Boolean!
+  isEndingShift: Boolean!
+
+  shareOfWork: Float!
+}
+
+
+type ProductionPlan @table(name: "production_plan") {
+  id: UUID! @default(expr: "uuidV4()")
+
+  startDate: Timestamp!
+  dueDate: Timestamp!
 }
