@@ -35,7 +35,7 @@ router.get('/departments', async (req: Request, res: Response) => {
             orderBy: { name: 'asc' },
             include: {
                 _count: {
-                    select: { workers: true, taskTemplates: true }
+                    select: { taskTemplates: true, workerDepartments: true }
                 }
             }
         });
@@ -48,15 +48,16 @@ router.get('/departments', async (req: Request, res: Response) => {
 
 /**
  * GET /api/v1/master/module-profiles
- * List all module profiles with attributes count
+ * List all module profiles
  */
 router.get('/module-profiles', async (req: Request, res: Response) => {
     try {
         const profiles = await prisma.moduleProfile.findMany({
             orderBy: { name: 'asc' },
             include: {
+                project: true,
                 _count: {
-                    select: { moduleAttributes: true }
+                    select: { moduleCharacteristics: true, modules: true }
                 }
             }
         });
@@ -69,7 +70,7 @@ router.get('/module-profiles', async (req: Request, res: Response) => {
 
 /**
  * GET /api/v1/master/module-profiles/:id
- * Get a module profile with all attributes
+ * Get a module profile with all characteristics and attributes
  */
 router.get('/module-profiles/:id', async (req: Request<{ id: string }>, res: Response) => {
     try {
@@ -77,7 +78,13 @@ router.get('/module-profiles/:id', async (req: Request<{ id: string }>, res: Res
         const profile = await prisma.moduleProfile.findUnique({
             where: { id },
             include: {
-                moduleAttributes: true
+                project: true,
+                moduleCharacteristics: true,
+                moduleProfileModuleAttributes: {
+                    include: {
+                        moduleAttribute: true
+                    }
+                }
             }
         });
         if (!profile) {
@@ -100,7 +107,10 @@ router.get('/traveler-templates', async (req: Request, res: Response) => {
             orderBy: { name: 'asc' },
             include: {
                 _count: {
-                    select: { taskTemplates: true, timeStudies: true }
+                    select: {
+                        travelers: true,
+                        travelerTemplateTaskTemplates: true
+                    }
                 }
             }
         });
@@ -113,7 +123,7 @@ router.get('/traveler-templates', async (req: Request, res: Response) => {
 
 /**
  * GET /api/v1/master/traveler-templates/:id
- * Get a traveler template with all tasks and time studies
+ * Get a traveler template with all task templates
  */
 router.get('/traveler-templates/:id', async (req: Request<{ id: string }>, res: Response) => {
     try {
@@ -121,13 +131,16 @@ router.get('/traveler-templates/:id', async (req: Request<{ id: string }>, res: 
         const template = await prisma.travelerTemplate.findUnique({
             where: { id },
             include: {
-                taskTemplates: {
+                travelerTemplateTaskTemplates: {
                     include: {
-                        department: true
-                    },
-                    orderBy: { taskName: 'asc' }
-                },
-                timeStudies: true
+                        taskTemplate: {
+                            include: {
+                                department: true,
+                                station: true
+                            }
+                        }
+                    }
+                }
             }
         });
         if (!template) {
@@ -141,29 +154,160 @@ router.get('/traveler-templates/:id', async (req: Request<{ id: string }>, res: 
 });
 
 /**
+ * GET /api/v1/master/task-templates
+ * List all task templates with optional filtering
+ */
+router.get('/task-templates', async (req: Request, res: Response) => {
+    try {
+        const { departmentId, stationId } = req.query;
+
+        const where: any = {};
+        if (departmentId) where.departmentId = departmentId as string;
+        if (stationId) where.stationId = stationId as string;
+
+        const taskTemplates = await prisma.taskTemplate.findMany({
+            where,
+            orderBy: { order: 'asc' },
+            include: {
+                department: true,
+                station: true,
+                _count: {
+                    select: { tasks: true, timeStudies: true }
+                }
+            }
+        });
+        res.json({ success: true, data: taskTemplates });
+    } catch (error) {
+        console.error('Error fetching task templates:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch task templates' });
+    }
+});
+
+/**
  * GET /api/v1/master/workers
  * List all workers with optional filtering
  */
 router.get('/workers', async (req: Request, res: Response) => {
     try {
-        const { shiftId, departmentId } = req.query;
+        const { shiftId, departmentId, stationId } = req.query;
 
         const where: any = {};
         if (shiftId) where.shiftId = shiftId as string;
-        if (departmentId) where.departmentId = departmentId as string;
+        if (stationId) where.stationId = stationId as string;
 
-        const workers = await prisma.worker.findMany({
-            where,
-            orderBy: { name: 'asc' },
-            include: {
-                shift: true,
-                department: true
-            }
-        });
+        // For departmentId, we need to filter through workerDepartments
+        let workers;
+        if (departmentId) {
+            workers = await prisma.worker.findMany({
+                where: {
+                    ...where,
+                    workerDepartments: {
+                        some: {
+                            departmentId: departmentId as string
+                        }
+                    }
+                },
+                orderBy: { firstName: 'asc' },
+                include: {
+                    shift: true,
+                    station: true,
+                    workerDepartments: {
+                        include: {
+                            department: true
+                        }
+                    }
+                }
+            });
+        } else {
+            workers = await prisma.worker.findMany({
+                where,
+                orderBy: { firstName: 'asc' },
+                include: {
+                    shift: true,
+                    station: true,
+                    workerDepartments: {
+                        include: {
+                            department: true
+                        }
+                    }
+                }
+            });
+        }
+
         res.json({ success: true, data: workers });
     } catch (error) {
         console.error('Error fetching workers:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch workers' });
+    }
+});
+
+/**
+ * GET /api/v1/master/stations
+ * List all stations
+ */
+router.get('/stations', async (req: Request, res: Response) => {
+    try {
+        const stations = await prisma.station.findMany({
+            orderBy: { order: 'asc' },
+            include: {
+                inspectionArea: true,
+                _count: {
+                    select: { workers: true, taskTemplates: true }
+                }
+            }
+        });
+        res.json({ success: true, data: stations });
+    } catch (error) {
+        console.error('Error fetching stations:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch stations' });
+    }
+});
+
+/**
+ * GET /api/v1/master/projects
+ * List all projects
+ */
+router.get('/projects', async (req: Request, res: Response) => {
+    try {
+        const projects = await prisma.project.findMany({
+            orderBy: { name: 'asc' },
+            include: {
+                _count: {
+                    select: { moduleProfiles: true }
+                }
+            }
+        });
+        res.json({ success: true, data: projects });
+    } catch (error) {
+        console.error('Error fetching projects:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch projects' });
+    }
+});
+
+/**
+ * GET /api/v1/master/time-studies
+ * List time studies with optional filtering
+ */
+router.get('/time-studies', async (req: Request, res: Response) => {
+    try {
+        const { taskTemplateId } = req.query;
+
+        const where: any = {};
+        if (taskTemplateId) where.taskTemplateId = taskTemplateId as string;
+
+        const timeStudies = await prisma.timeStudy.findMany({
+            where,
+            orderBy: { date: 'desc' },
+            include: {
+                taskTemplate: true,
+                module: true
+            },
+            take: 100 // Limit results
+        });
+        res.json({ success: true, data: timeStudies });
+    } catch (error) {
+        console.error('Error fetching time studies:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch time studies' });
     }
 });
 

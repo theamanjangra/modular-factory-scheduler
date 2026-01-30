@@ -12,7 +12,7 @@ import {
 } from '../types';
 import { PlanningService } from './planningService';
 import { computeEstimatedTotalLaborHours } from '../utils/estimation';
-import { getShiftById, getWorkersNameWithShiftId } from '../queries/shift.query';
+import { getShiftById, getWorkersNameWithShiftId, buildDefaultShift, ShiftInfo } from '../queries/shift.query';
 
 class MultiShiftValidationError extends Error {
     statusCode = 400;
@@ -172,7 +172,7 @@ export class MultiShiftPlanningService {
     }
 
     private async resolveShiftWindow(input: MultiShiftPlanRequest['shift1'], productionRate: number, providedWorkers?: Worker[]): Promise<ShiftWindow> {
-        const shift = await getShiftById(input.shiftId) || this.buildDefaultShift(input.shiftId, input.shiftInterval.start);
+        const shift = await getShiftById(input.shiftId) || buildDefaultShift(input.shiftId, input.shiftInterval.start);
         if (!shift) {
             throw new MultiShiftValidationError(`Shift not found: ${input.shiftId}`);
         }
@@ -248,44 +248,6 @@ export class MultiShiftPlanningService {
             intervalEnd: clampedEnd,
             productionRate,
             workers
-        };
-    }
-
-    // Provide sane defaults when no shift is found in DB
-    private buildDefaultShift(shiftId: string, startRef?: string) {
-        let baseDate = '2024-01-01';
-        if (startRef && startRef.includes('T')) {
-            const d = new Date(startRef);
-            if (!isNaN(d.getTime())) {
-                const y = d.getUTCFullYear();
-                const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-                const day = String(d.getUTCDate()).padStart(2, '0');
-                baseDate = `${y}-${m}-${day}`;
-            }
-        }
-
-        // Default shifts: shift-1 on base day, shift-2 on the next day (no cross-midnight)
-        const addDays = (dateStr: string, days: number) => {
-            const d = new Date(dateStr + 'T00:00:00Z');
-            d.setUTCDate(d.getUTCDate() + days);
-            const y = d.getUTCFullYear();
-            const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(d.getUTCDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
-        };
-        const nextDate = addDays(baseDate, 1);
-
-        const defaults: Record<string, { start: string; end: string }> = {
-            'shift-1': { start: `${baseDate}T07:00:00Z`, end: `${baseDate}T17:00:00Z` },
-            'shift-2': { start: `${nextDate}T07:00:00Z`, end: `${nextDate}T17:00:00Z` }
-        };
-
-        const def = defaults[shiftId];
-        if (!def) return null;
-        return {
-            id: shiftId,
-            startTime: def.start,
-            endTime: def.end
         };
     }
 

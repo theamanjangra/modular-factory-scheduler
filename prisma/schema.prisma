@@ -7,44 +7,1154 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==================== Existing Models ====================
+// =====================
+// Enums (from Vederra schema)
+// =====================
+
+enum TaskInterruptionReason {
+  materials
+  equipment
+  other
+}
+
+enum ApplicationStatus {
+  submitted
+  reviewed
+  approved
+  rejected
+}
+
+enum AvailabilityType {
+  fullTime
+  partTime
+  temporary
+}
+
+enum PrimaryExperienceType {
+  residential
+  commercial
+}
+
+enum TradeSkill {
+  framing
+  roofing
+  siding
+  drywallTaping
+  painting
+  plumbing
+  flooring
+  trimFinishCarpentry
+  cabinetInstallation
+  electrical
+  other
+}
+
+enum ToolType {
+  handTools
+  nailGuns
+  laddersScaffolding
+  powerSaws
+  drillsImpactDrivers
+  cranes
+  heavyEquipment
+  other
+}
+
+enum ModuleAttributeType {
+  number
+  boolean
+}
+
+enum WorkerTaskPreference {
+  primaryJob
+  secondaryJob
+  canHelp
+  canNotHelp
+}
+
+enum TaskType {
+  default
+  subassembly
+  nonWorker
+}
+
+enum SubassemblyTaskScheduleType {
+  oneStationAhead
+  twoStationsAhead
+  oneStationBehind
+}
+
+enum TaskStatus {
+  pending
+  approved
+  rejected
+}
+
+enum LeadType {
+  closeup
+  drywall
+  electrical
+  exterior
+  floors
+  hvac
+  insulation
+  interior
+  office
+  paint
+  plumbing
+  roofing
+  shipping
+  walls
+}
+
+enum NoteType {
+  approval
+  rejection
+  photoOnly
+  move
+  moveRequest
+  normal
+}
+
+enum StorageDirectory {
+  settings
+  travelers
+  temp
+}
+
+enum Skill {
+  framing
+  finishCarpentry
+  electricalTrim
+  electricalRough
+  plumbing
+  drywallHanging
+  drywallMud
+  texture
+  painting
+  roofing
+  flooring
+  boxMoving
+  cutting
+  hvac
+}
+
+enum ModuleCharacteristicType {
+  squareFeet
+  linearFeetExteriorWalls
+  linearFeetInteriorWalls
+  countInteriorWalls
+  countToilets
+  countSinks
+  countWindows
+  countExteriorDoors
+  countInteriorDoors
+  squareFeetExteriorCloseUp
+  squareFeetRoofing
+  linearFeetCabinets
+  countElectricalTerminals
+  linearFeetFirewall
+  countStairs
+  hasHvacDucting
+}
+
+enum WorkerRole {
+  worker
+  lead
+  qam
+  supervisor
+  admin
+}
+
+enum IssueType {
+  materialShortage
+  mistake
+}
+
+enum PtoRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum PtoType {
+  sick
+  vacation
+  juryDuty
+  bereavement
+  court
+}
+
+enum ProjectContactRole {
+  superIntendant
+  projectManager
+  purchaser
+  owner
+}
+
+enum UserType {
+  worker
+  office
+  customer
+}
+
+enum WarrantyCategory {
+  framing
+  electrical
+  plumbing
+  hvac
+  drywall
+  paint
+  flooring
+  cabinets
+  windowsDoors
+  exterior
+  roofing
+  appliances
+}
+
+enum WarrantyPriority {
+  low
+  medium
+  high
+}
+
+enum WarrantyStatus {
+  pending
+  approved
+  rejected
+}
+
+enum ExtraClockTimeType {
+  beforeOpen
+  afterClose
+}
+
+// =====================
+// Core User Types
+// =====================
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  firstname String
-  lastname  String
-  role      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String    @id @default(uuid())
+  firebaseUserId String?
+  email          String?   @unique
+  firstname      String
+  lastname       String
+  phone          String    @unique
+  type           UserType
+  lastActivity   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  notes            Note[]
+  projectContacts  ProjectContact[]
+  warrantyClaims   WarrantyClaims[]
 
   @@map("users")
 }
 
-model Employee {
-  id        Int       @id @default(autoincrement())
-  name      String
-  email     String?   @unique
-  crews     String[]
+// =====================
+// Core Project Structure
+// =====================
+
+model Project {
+  id   String  @id @default(uuid())
+  name String?
+
+  moduleProfiles  ModuleProfile[]
+  projectContacts ProjectContact[]
+  warrantyClaims  WarrantyClaims[]
+
+  @@map("projects")
+}
+
+model ModuleProfile {
+  id        String   @id @default(uuid())
+  name      String?
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  moduleCharacteristics         ModuleCharacteristic[]
+  modules                       Module[]
+  travelers                     Traveler[]
+  moduleProfileModuleAttributes ModuleProfileModuleAttribute[]
+
+  @@map("module_profiles")
+}
+
+model ModuleCharacteristic {
+  id                 String                   @id @default(uuid())
+  moduleProfileId    String
+  moduleProfile      ModuleProfile            @relation(fields: [moduleProfileId], references: [id], onDelete: Cascade)
+  characteristicType ModuleCharacteristicType?
+  value              Float?
+
+  @@map("module_characteristics")
+}
+
+model Module {
+  id                  String            @id @default(uuid())
+  travelerId          String?
+  traveler            Traveler?         @relation("ModuleTraveler", fields: [travelerId], references: [id])
+  travelerTemplateId  String
+  travelerTemplate    TravelerTemplate  @relation(fields: [travelerTemplateId], references: [id])
+  moduleProfileId     String
+  moduleProfile       ModuleProfile     @relation(fields: [moduleProfileId], references: [id])
+  serialNumber        String?
+  order               Int?
+
+  timeStudies TimeStudy[]
+
+  @@map("modules")
+}
+
+model TravelerTemplate {
+  id        String    @id @default(uuid())
+  name      String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  timelogs  Timelog[]
 
-  @@map("employees")
+  modules                                Module[]
+  travelers                              Traveler[]
+  travelerTemplateInspectionItemTemplates TravelerTemplateInspectionItemTemplate[]
+  travelerTemplateTaskTemplates          TravelerTemplateTaskTemplate[]
+
+  @@map("traveler_templates")
 }
 
-model Timelog {
-  id          Int      @id @default(autoincrement())
-  employeeId  Int
-  startTime   DateTime
-  endTime     DateTime
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+model Traveler {
+  id                    String            @id @default(uuid())
+  travelerTemplateId    String
+  travelerTemplate      TravelerTemplate  @relation(fields: [travelerTemplateId], references: [id])
+  moduleProfileId       String?
+  moduleProfile         ModuleProfile?    @relation(fields: [moduleProfileId], references: [id])
+  isShipped             Boolean?
+  notesRequiredUpload   Boolean?
+  moduleId              String?           @unique
+  serialNumber          String?
+  siblingId             String?           @unique
+  sibling               Traveler?         @relation("TravelerSibling", fields: [siblingId], references: [id])
+  siblingOf             Traveler?         @relation("TravelerSibling")
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
-  @@map("timelogs")
+  modules                 Module[]           @relation("ModuleTraveler")
+  travelerStations        TravelerStation[]
+  inspectionItems         InspectionItem[]
+  tasks                   Task[]
+  adhocTasks              AdhocTask[]
+  adhocInspectionItems    AdhocInspectionItem[]
+  notes                   Note[]
+  travelerInspectionAreas TravelerInspectionArea[]
+
+  @@map("travelers")
 }
+
+// =====================
+// Traveler and Station
+// =====================
+
+model InspectionArea {
+  id        String    @id @default(uuid())
+  name      String?
+  order     Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  stations                       Station[]
+  inspectionItemTemplates        InspectionItemTemplate[]
+  inspectionItemsNewArea         InspectionItem[]           @relation("NewInspectionArea")
+  adhocInspectionItems           AdhocInspectionItem[]      @relation("AdhocInspectionArea")
+  adhocInspectionItemsNewArea    AdhocInspectionItem[]      @relation("NewAdhocInspectionArea")
+  travelerInspectionAreas        TravelerInspectionArea[]
+
+  @@map("inspection_areas")
+}
+
+model Station {
+  id                          String           @id @default(uuid())
+  inspectionAreaId            String?
+  inspectionArea              InspectionArea?  @relation(fields: [inspectionAreaId], references: [id])
+  name                        String?
+  order                       Int?
+  doesReceiveTravelers        Boolean?
+  canReceiveMultipleTravelers Boolean?
+
+  workers                         Worker[]
+  workersNewStation               Worker[]       @relation("WorkerNewStation")
+  travelerStations                TravelerStation[]
+  taskTemplates                   TaskTemplate[]
+  taskTemplatesSubassemblyRelease TaskTemplate[] @relation("SubassemblyReleaseStation")
+  tasksNewStation                 Task[]         @relation("TaskNewStation")
+  adhocTasks                      AdhocTask[]
+  adhocTasksNewStation            AdhocTask[]    @relation("AdhocTaskNewStation")
+
+  @@map("stations")
+}
+
+model TravelerStation {
+  id                     String   @id @default(uuid())
+  travelerId             String
+  traveler               Traveler @relation(fields: [travelerId], references: [id], onDelete: Cascade)
+  stationId              String
+  station                Station  @relation(fields: [stationId], references: [id])
+  leadInspectionProgress Float?
+  qamInspectionProgress  Float?
+  taskProgress           Float?
+  isCurrent              Boolean?
+
+  @@map("traveler_stations")
+}
+
+// =====================
+// Inspection System
+// =====================
+
+model InspectionItemTemplate {
+  id               String          @id @default(uuid())
+  inspectionAreaId String
+  inspectionArea   InspectionArea  @relation(fields: [inspectionAreaId], references: [id])
+  departmentId     String?
+  department       Department?     @relation(fields: [departmentId], references: [id])
+  name             String?
+  description      String?
+  order            Int?
+  isPhotoRequired  Boolean?
+  isVideoRequired  Boolean?
+
+  inspectionItems                         InspectionItem[]
+  travelerTemplateInspectionItemTemplates TravelerTemplateInspectionItemTemplate[]
+
+  @@map("inspection_item_templates")
+}
+
+model InspectionItem {
+  id                       String                  @id @default(uuid())
+  inspectionItemTemplateId String
+  inspectionItemTemplate   InspectionItemTemplate  @relation(fields: [inspectionItemTemplateId], references: [id])
+  travelerId               String
+  traveler                 Traveler                @relation(fields: [travelerId], references: [id])
+  isMoveRequested          Boolean?
+  isMoved                  Boolean?
+  newInspectionAreaId      String?
+  newInspectionArea        InspectionArea?         @relation("NewInspectionArea", fields: [newInspectionAreaId], references: [id])
+  leadStatus               TaskStatus?
+  qamStatus                TaskStatus?
+
+  issues Issue[]
+  notes  Note[]
+
+  @@map("inspection_items")
+}
+
+// =====================
+// Task System
+// =====================
+
+model TaskTemplate {
+  id                            String    @id @default(uuid())
+  stationId                     String
+  station                       Station   @relation(fields: [stationId], references: [id])
+  departmentId                  String
+  department                    Department @relation(fields: [departmentId], references: [id])
+  taskType                      TaskType
+  name                          String
+  description                   String?
+  order                         Int
+  isPhotoRequired               Boolean   @default(false)
+  isVideoRequired               Boolean   @default(false)
+  minWorkers                    Int
+  maxWorkers                    Int
+  rankedSkills                  Skill[]
+  prerequisiteTaskTemplateId    String?
+  prerequisiteTaskTemplate      TaskTemplate? @relation("TaskPrerequisite", fields: [prerequisiteTaskTemplateId], references: [id])
+  dependentTaskTemplates        TaskTemplate[] @relation("TaskPrerequisite")
+  nonWorkerTaskDuration         Float?
+  subassemblyTaskReleaseStationId String?
+  subassemblyTaskReleaseStation Station?  @relation("SubassemblyReleaseStation", fields: [subassemblyTaskReleaseStationId], references: [id])
+
+  tasks                          Task[]
+  travelerTemplateTaskTemplates  TravelerTemplateTaskTemplate[]
+  timeStudies                    TimeStudy[]
+  taskTemplateModuleAttributes   TaskTemplateModuleAttribute[]
+  workerTaskTemplates            WorkerTaskTemplate[]
+
+  @@map("task_templates")
+}
+
+model Task {
+  id              String       @id @default(uuid())
+  taskTemplateId  String
+  taskTemplate    TaskTemplate @relation(fields: [taskTemplateId], references: [id])
+  travelerId      String
+  traveler        Traveler     @relation(fields: [travelerId], references: [id])
+  isMoveRequested Boolean?
+  isMoved         Boolean?
+  newStationId    String?
+  newStation      Station?     @relation("TaskNewStation", fields: [newStationId], references: [id])
+  leadStatus      TaskStatus?
+  qamStatus       TaskStatus?
+  createdAt       DateTime     @default(now())
+
+  workerTasks        WorkerTask[]
+  issues             Issue[]
+  notes              Note[]
+  taskInterruptions  TaskInterruption[]
+
+  @@map("tasks")
+}
+
+// =====================
+// Adhoc Items
+// =====================
+
+model AdhocTask {
+  id              String      @id @default(uuid())
+  travelerId      String
+  traveler        Traveler    @relation(fields: [travelerId], references: [id])
+  stationId       String
+  station         Station     @relation(fields: [stationId], references: [id])
+  isMoveRequested Boolean?
+  isMoved         Boolean?
+  newStationId    String?
+  newStation      Station?    @relation("AdhocTaskNewStation", fields: [newStationId], references: [id])
+  departmentId    String?
+  department      Department? @relation(fields: [departmentId], references: [id])
+  leadStatus      TaskStatus?
+  qamStatus       TaskStatus?
+  order           Int?
+  isPhotoRequired Boolean?
+  isVideoRequired Boolean?
+
+  notes Note[]
+
+  @@map("adhoc_tasks")
+}
+
+model AdhocInspectionItem {
+  id                  String           @id @default(uuid())
+  travelerId          String
+  traveler            Traveler         @relation(fields: [travelerId], references: [id])
+  inspectionAreaId    String
+  inspectionArea      InspectionArea   @relation("AdhocInspectionArea", fields: [inspectionAreaId], references: [id])
+  isMoveRequested     Boolean?
+  isMoved             Boolean?
+  newInspectionAreaId String?
+  newInspectionArea   InspectionArea?  @relation("NewAdhocInspectionArea", fields: [newInspectionAreaId], references: [id])
+  departmentId        String?
+  department          Department?      @relation(fields: [departmentId], references: [id])
+  leadStatus          TaskStatus?
+  qamStatus           TaskStatus?
+  order               Int?
+  isPhotoRequired     Boolean?
+  isVideoRequired     Boolean?
+
+  notes Note[]
+
+  @@map("adhoc_inspection_items")
+}
+
+// =====================
+// Issues
+// =====================
+
+model Issue {
+  id               String          @id @default(uuid())
+  taskId           String?
+  task             Task?           @relation(fields: [taskId], references: [id])
+  inspectionItemId String?
+  inspectionItem   InspectionItem? @relation(fields: [inspectionItemId], references: [id])
+  name             String?
+  description      String?
+  type             IssueType?
+  isResolved       Boolean?
+
+  @@map("issues")
+}
+
+// =====================
+// Workers and Time Tracking
+// =====================
+
+model Worker {
+  id                 String      @id @default(uuid())
+  stationId          String
+  station            Station     @relation(fields: [stationId], references: [id])
+  shiftId            String?
+  shift              Shift?      @relation(fields: [shiftId], references: [id])
+  newStationId       String?
+  newStation         Station?    @relation("WorkerNewStation", fields: [newStationId], references: [id])
+  employeeId         String?
+  firstName          String?
+  lastName           String?
+  passcode           String?
+  phone              String?
+  role               WorkerRole?
+  rankedSkills       Skill[]
+  customClockInDate  DateTime?
+  customClockOutDate DateTime?
+  canClockExtraTime  Boolean?
+
+  workerTasks         WorkerTask[]
+  timeLogs            TimeLog[]
+  workerDepartments   WorkerDepartment[]
+  ptoRequests         PtoRequest[]
+  devices             Device[]
+  notifications       Notification[]
+  workerTaskTemplates WorkerTaskTemplate[]
+  extraClockTimes     ExtraClockTime[]
+
+  @@map("workers")
+}
+
+model WorkerTask {
+  id                 String    @id @default(uuid())
+  workerId           String
+  worker             Worker    @relation(fields: [workerId], references: [id])
+  taskId             String
+  task               Task      @relation(fields: [taskId], references: [id])
+  startDate          DateTime?
+  endDate            DateTime?
+  scheduledStartDate DateTime?
+  scheduledEndDate   DateTime?
+
+  @@map("worker_tasks")
+}
+
+model TimeLog {
+  id                   String    @id @default(uuid())
+  workerId             String
+  worker               Worker    @relation(fields: [workerId], references: [id])
+  officialClockInDate  DateTime?
+  officialClockOutDate DateTime?
+  actualClockInDate    DateTime?
+  actualClockOutDate   DateTime?
+
+  @@map("time_logs")
+}
+
+// =====================
+// Supporting Types
+// =====================
+
+model Note {
+  id                    String               @id @default(uuid())
+  userId                String?
+  user                  User?                @relation(fields: [userId], references: [id])
+  text                  String?
+  type                  NoteType?
+  travelerId            String?
+  traveler              Traveler?            @relation(fields: [travelerId], references: [id])
+  taskId                String?
+  task                  Task?                @relation(fields: [taskId], references: [id])
+  inspectionItemId      String?
+  inspectionItem        InspectionItem?      @relation(fields: [inspectionItemId], references: [id])
+  adhocTaskId           String?
+  adhocTask             AdhocTask?           @relation(fields: [adhocTaskId], references: [id])
+  adhocInspectionItemId String?
+  adhocInspectionItem   AdhocInspectionItem? @relation(fields: [adhocInspectionItemId], references: [id])
+  warrantyClaimId       String?
+  warrantyClaim         WarrantyClaims?      @relation(fields: [warrantyClaimId], references: [id])
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  managedFiles ManagedFile[]
+
+  @@map("notes")
+}
+
+model ManagedFile {
+  id                String            @id @default(uuid())
+  contentType       String?
+  filename          String?
+  isUploaded        Boolean?
+  isAuthRequired    Boolean?
+  shouldBePublic    Boolean?
+  shouldCache       Boolean?
+  shouldDeferUpload Boolean?
+  storageDir        StorageDirectory?
+  uploadAttempts    Int?
+  createdAt         DateTime          @default(now())
+  noteId            String?
+  note              Note?             @relation(fields: [noteId], references: [id])
+
+  @@map("managed_files")
+}
+
+// =====================
+// Mapping Tables
+// =====================
+
+model TravelerTemplateInspectionItemTemplate {
+  id                       String                 @id @default(uuid())
+  travelerTemplateId       String
+  travelerTemplate         TravelerTemplate       @relation(fields: [travelerTemplateId], references: [id])
+  inspectionItemTemplateId String
+  inspectionItemTemplate   InspectionItemTemplate @relation(fields: [inspectionItemTemplateId], references: [id])
+
+  @@map("traveler_template_inspection_item_template")
+}
+
+model TravelerTemplateTaskTemplate {
+  id                 String           @id @default(uuid())
+  travelerTemplateId String
+  travelerTemplate   TravelerTemplate @relation(fields: [travelerTemplateId], references: [id])
+  taskTemplateId     String
+  taskTemplate       TaskTemplate     @relation(fields: [taskTemplateId], references: [id])
+
+  @@map("traveler_template_task_template")
+}
+
+// =====================
+// Shift & Department
+// =====================
+
+model Shift {
+  id              String    @id @default(uuid())
+  name            String?
+  startTime       DateTime?
+  endTime         DateTime?
+  lunchStartTime  DateTime?
+  lunchEndTime    DateTime?
+  weekdayOrdinals Int[]
+
+  workers              Worker[]
+  productionPlanShifts ProductionPlanShift[]
+
+  @@map("shifts")
+}
+
+model Department {
+  id        String    @id @default(uuid())
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  inspectionItemTemplates InspectionItemTemplate[]
+  taskTemplates           TaskTemplate[]
+  adhocTasks              AdhocTask[]
+  adhocInspectionItems    AdhocInspectionItem[]
+  workerDepartments       WorkerDepartment[]
+  extraClockTimes         ExtraClockTime[]
+
+  @@map("departments")
+}
+
+model WorkerDepartment {
+  id           String     @id @default(uuid())
+  workerId     String
+  worker       Worker     @relation(fields: [workerId], references: [id])
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  isLead       Boolean?
+
+  @@map("worker_departments")
+}
+
+// =====================
+// Module Attributes
+// =====================
+
+model ModuleAttribute {
+  id                  String              @id @default(uuid())
+  name                String
+  moduleAttributeType ModuleAttributeType
+
+  moduleProfileModuleAttributes ModuleProfileModuleAttribute[]
+  taskTemplateModuleAttributes  TaskTemplateModuleAttribute[]
+  timeStudyModuleAttributes     TimeStudyModuleAttribute[]
+
+  @@map("module_attributes")
+}
+
+model ModuleProfileModuleAttribute {
+  id                String          @id @default(uuid())
+  moduleProfileId   String
+  moduleProfile     ModuleProfile   @relation(fields: [moduleProfileId], references: [id])
+  moduleAttributeId String
+  moduleAttribute   ModuleAttribute @relation(fields: [moduleAttributeId], references: [id])
+  value             String
+
+  @@map("module_profile_module_attribute")
+}
+
+model TaskTemplateModuleAttribute {
+  id                String          @id @default(uuid())
+  taskTemplateId    String
+  taskTemplate      TaskTemplate    @relation(fields: [taskTemplateId], references: [id])
+  moduleAttributeId String
+  moduleAttribute   ModuleAttribute @relation(fields: [moduleAttributeId], references: [id])
+
+  @@map("task_template_module_attribute")
+}
+
+// =====================
+// Chat System
+// =====================
+
+model ChatSession {
+  id        String    @id @default(uuid())
+  userId    String?
+  metadata  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime
+
+  messages ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id                 String      @id @default(uuid())
+  sessionId          String
+  session            ChatSession @relation(fields: [sessionId], references: [id])
+  role               String
+  content            String
+  timestamp          DateTime
+  attachmentType     String?
+  attachmentFilename String?
+
+  @@map("chat_messages")
+}
+
+// =====================
+// PTO Management
+// =====================
+
+model PtoRequest {
+  id                    String            @id @default(uuid())
+  workerId              String
+  worker                Worker            @relation(fields: [workerId], references: [id])
+  startDate             DateTime?
+  endDate               DateTime?
+  type                  PtoType?
+  hoursRequested        Float?
+  note                  String?
+  status                PtoRequestStatus?
+  googleCalendarEventId String?
+  updatedAt             DateTime          @updatedAt
+  createdAt             DateTime          @default(now())
+
+  @@map("pto_requests")
+}
+
+// =====================
+// Time Study
+// =====================
+
+model TimeStudy {
+  id             String        @id @default(uuid())
+  taskTemplateId String
+  taskTemplate   TaskTemplate  @relation(fields: [taskTemplateId], references: [id])
+  moduleId       String?
+  module         Module?       @relation(fields: [moduleId], references: [id])
+  date           DateTime?
+  workerCount    Int?
+  clockTime      Float?
+  notes          String?
+
+  timeStudyModuleAttributes TimeStudyModuleAttribute[]
+
+  @@map("time_studies")
+}
+
+model TimeStudyModuleAttribute {
+  id                String          @id @default(uuid())
+  timeStudyId       String
+  timeStudy         TimeStudy       @relation(fields: [timeStudyId], references: [id])
+  moduleAttributeId String
+  moduleAttribute   ModuleAttribute @relation(fields: [moduleAttributeId], references: [id])
+  value             String
+
+  @@map("time_study_module_attribute")
+}
+
+// =====================
+// Project Contacts
+// =====================
+
+model ProjectContact {
+  id        String             @id @default(uuid())
+  userId    String?
+  user      User?              @relation(fields: [userId], references: [id])
+  firstname String
+  lastname  String
+  projectId String
+  project   Project            @relation(fields: [projectId], references: [id])
+  role      ProjectContactRole
+  phone     String
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@map("project_contacts")
+}
+
+// =====================
+// Device & Notifications
+// =====================
+
+model Device {
+  id        String   @id @default(uuid())
+  deviceId  String
+  workerId  String
+  worker    Worker   @relation(fields: [workerId], references: [id])
+  fcmToken  String
+  lastSeen  DateTime
+
+  @@map("devices")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  workerId  String
+  worker    Worker   @relation(fields: [workerId], references: [id])
+  title     String
+  body      String
+  isSent    Boolean
+  isRead    Boolean
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+// =====================
+// Warranty Claims
+// =====================
+
+model WarrantyClaims {
+  id           String            @id @default(uuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id])
+  projectId    String?
+  project      Project?          @relation(fields: [projectId], references: [id])
+  claimNumber  Int?
+  serialNumber Int?
+  category     WarrantyCategory?
+  priority     WarrantyPriority?
+  status       WarrantyStatus?
+  description  String?
+  photos       String[]
+  updatedAt    DateTime          @updatedAt
+  createdAt    DateTime          @default(now())
+
+  notes Note[]
+
+  @@map("warranty_claims")
+}
+
+// =====================
+// Worker Task Templates
+// =====================
+
+model WorkerTaskTemplate {
+  id             String               @id @default(uuid())
+  workerId       String
+  worker         Worker               @relation(fields: [workerId], references: [id])
+  taskTemplateId String
+  taskTemplate   TaskTemplate         @relation(fields: [taskTemplateId], references: [id])
+  preference     WorkerTaskPreference
+
+  @@map("worker_task_template")
+}
+
+// =====================
+// Applicant System
+// =====================
+
+model Applicant {
+  id                       String    @id @default(uuid())
+  firstName                String
+  middleName               String?
+  lastName                 String
+  phone                    String?
+  email                    String?   @unique
+  streetAddress            String?
+  city                     String?
+  state                    String?
+  zipCode                  String?
+  authorizedUsWork         Boolean?
+  hasColoradoDriversLicense Boolean?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  jobApplications JobApplication[]
+
+  @@map("applicants")
+}
+
+model JobApplication {
+  id                              String            @id @default(uuid())
+  applicantId                     String
+  applicant                       Applicant         @relation(fields: [applicantId], references: [id])
+  yearsConstructionExperience     Int?
+  constructionExperienceDescription String?
+  ownsOwnTools                    Boolean?
+  additionalInformation           String?
+  certifiedTruthful               Boolean
+  certifiedAt                     DateTime?
+  status                          ApplicationStatus
+  submittedAt                     DateTime
+
+  applicationAvailabilities     ApplicationAvailability[]
+  applicationPrimaryExperiences ApplicationPrimaryExperience[]
+  applicationTradeSkills        ApplicationTradeSkill[]
+  applicationTools              ApplicationTool[]
+  workHistories                 WorkHistory[]
+  applicationReferences         ApplicationReference[]
+
+  @@map("job_applications")
+}
+
+model ApplicationAvailability {
+  id            String          @id @default(uuid())
+  applicationId String
+  application   JobApplication  @relation(fields: [applicationId], references: [id])
+  type          AvailabilityType
+
+  @@map("application_availabilities")
+}
+
+model ApplicationPrimaryExperience {
+  id            String                @id @default(uuid())
+  applicationId String
+  application   JobApplication        @relation(fields: [applicationId], references: [id])
+  type          PrimaryExperienceType
+
+  @@map("application_primary_experiences")
+}
+
+model ApplicationTradeSkill {
+  id              String         @id @default(uuid())
+  applicationId   String
+  application     JobApplication @relation(fields: [applicationId], references: [id])
+  skill           TradeSkill
+  yearsExperience Float?
+  otherText       String?
+
+  @@map("application_trade_skills")
+}
+
+model ApplicationTool {
+  id            String         @id @default(uuid())
+  applicationId String
+  application   JobApplication @relation(fields: [applicationId], references: [id])
+  tool          ToolType
+  specifyText   String?
+
+  @@map("application_tools")
+}
+
+model WorkHistory {
+  id              String         @id @default(uuid())
+  applicationId   String
+  application     JobApplication @relation(fields: [applicationId], references: [id])
+  employerName    String?
+  dateStarted     DateTime?
+  dateEnded       DateTime?
+  supervisorName  String?
+  supervisorPhone String?
+  reasonForLeaving String?
+  sortOrder       Int?
+
+  @@map("work_histories")
+}
+
+model ApplicationReference {
+  id            String         @id @default(uuid())
+  applicationId String
+  application   JobApplication @relation(fields: [applicationId], references: [id])
+  name          String
+  company       String?
+  phone         String?
+  relationship  String?
+  sortOrder     Int?
+
+  @@map("application_references")
+}
+
+// =====================
+// Extra Clock Time
+// =====================
+
+model ExtraClockTime {
+  id           String             @id @default(uuid())
+  workerId     String?
+  worker       Worker?            @relation(fields: [workerId], references: [id])
+  departmentId String?
+  department   Department?        @relation(fields: [departmentId], references: [id])
+  date         DateTime
+  duration     Float
+  type         ExtraClockTimeType
+
+  @@map("extra_clock_times")
+}
+
+// =====================
+// Traveler Inspection Area
+// =====================
+
+model TravelerInspectionArea {
+  id                     String         @id @default(uuid())
+  inspectionAreaId       String
+  inspectionArea         InspectionArea @relation(fields: [inspectionAreaId], references: [id])
+  travelerId             String
+  traveler               Traveler       @relation(fields: [travelerId], references: [id])
+  leadInspectionProgress Float
+  qamInspectionProgress  Float
+  isCurrent              Boolean
+
+  @@map("traveler_inspection_areas")
+}
+
+// =====================
+// Task Interruption
+// =====================
+
+model TaskInterruption {
+  id                          String                  @id @default(uuid())
+  taskId                      String
+  task                        Task                    @relation(fields: [taskId], references: [id])
+  reason                      TaskInterruptionReason
+  startDate                   DateTime
+  endDate                     DateTime?
+  maxWorkersDuringInterruption Int?
+  createdAt                   DateTime                @default(now())
+  updatedAt                   DateTime                @updatedAt
+
+  @@map("task_interruptions")
+}
+
+// =====================
+// Production Plan
+// =====================
+
+model ProductionPlan {
+  id        String   @id @default(uuid())
+  startDate DateTime
+  dueDate   DateTime
+
+  productionPlanShifts ProductionPlanShift[]
+
+  @@map("production_plan")
+}
+
+model ProductionPlanShift {
+  id               String         @id @default(uuid())
+  productionPlanId String
+  productionPlan   ProductionPlan @relation(fields: [productionPlanId], references: [id])
+  shiftId          String
+  shift            Shift          @relation(fields: [shiftId], references: [id])
+  isStartingShift  Boolean
+  isEndingShift    Boolean
+  shareOfWork      Float
+
+  @@map("production_plan_shift")
+}
+
+// =====================
+// Local Plan Storage (for MES Scheduler)
+// =====================
 
 model Plan {
   id            String                 @id @default(uuid())
@@ -74,115 +1184,4 @@ model WorkerTaskAssignment {
   @@index([taskId])
   @@index([status])
   @@map("worker_task_assignments")
-}
-
-// ==================== KAN-493: New Models ====================
-
-model Shift {
-  id          String    @id @default(uuid())
-  name        String
-  startTime   String    // e.g., "06:00"
-  endTime     String    // e.g., "14:30"
-  workers     Worker[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@map("shifts")
-}
-
-model Department {
-  id            String          @id @default(uuid())
-  name          String          @unique
-  description   String?
-  workers       Worker[]
-  taskTemplates TaskTemplate[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-
-  @@map("departments")
-}
-
-model ModuleProfile {
-  id               String            @id @default(uuid())
-  name             String
-  description      String?
-  moduleAttributes ModuleAttribute[]
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-
-  @@map("module_profiles")
-}
-
-model ModuleAttribute {
-  id              String        @id @default(uuid())
-  moduleProfileId String
-  moduleProfile   ModuleProfile @relation(fields: [moduleProfileId], references: [id], onDelete: Cascade)
-  attributeName   String
-  attributeValue  String
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@index([moduleProfileId])
-  @@map("module_attributes")
-}
-
-model TravelerTemplate {
-  id            String         @id @default(uuid())
-  name          String
-  description   String?
-  taskTemplates TaskTemplate[]
-  timeStudies   TimeStudy[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-
-  @@map("traveler_templates")
-}
-
-model TaskTemplate {
-  id                  String           @id @default(uuid())
-  travelerTemplateId  String
-  travelerTemplate    TravelerTemplate @relation(fields: [travelerTemplateId], references: [id], onDelete: Cascade)
-  taskName            String
-  departmentId        String?
-  department          Department?      @relation(fields: [departmentId], references: [id])
-  minCrew             Int              @default(1)
-  optimalCrew         Int              @default(1)
-  maxCrew             Int              @default(4)
-  laborHours          Float
-  prerequisiteTaskIds String[]         @default([])
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-
-  @@index([travelerTemplateId])
-  @@index([departmentId])
-  @@map("task_templates")
-}
-
-model TimeStudy {
-  id                 String           @id @default(uuid())
-  travelerTemplateId String
-  travelerTemplate   TravelerTemplate @relation(fields: [travelerTemplateId], references: [id], onDelete: Cascade)
-  taskName           String
-  averageTime        Float            // in hours
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-
-  @@index([travelerTemplateId])
-  @@map("time_studies")
-}
-
-model Worker {
-  id           String      @id @default(uuid())
-  name         String
-  crews        String[]
-  shiftId      String?
-  shift        Shift?      @relation(fields: [shiftId], references: [id])
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-
-  @@index([shiftId])
-  @@index([departmentId])
-  @@map("workers")
 }
