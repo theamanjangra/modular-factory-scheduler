@@ -3,11 +3,11 @@ import { PrismaClient, TaskType, Skill } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🌱 Seeding master data (Vederra Schema Compliant)...');
+    console.log('🌱 Seeding master data (Vederra Schema Compliant v2)...');
 
     // 1. Create Department
     const deptAssembly = await prisma.department.create({
-        data: { name: 'Assembly' } // Description does not exist
+        data: { name: 'Assembly' }
     });
     const deptLogistics = await prisma.department.create({
         data: { name: 'Logistics' }
@@ -26,7 +26,6 @@ async function main() {
     console.log('✅ Stations seeded');
 
     // 2. Create Shifts
-    // Schema uses DateTime for times. We'll set arbitrary dates (1970-01-01) with correct times.
     const baseDate = '1970-01-01';
     await prisma.shift.createMany({
         data: [
@@ -49,13 +48,11 @@ async function main() {
     console.log('✅ Shifts seeded');
 
     // 3. Create Workers
-    // Schema splits name, requires stationId, uses rankedSkills enum
     await prisma.worker.createMany({
         data: [
             {
                 firstName: 'John',
                 lastName: 'Doe',
-                departmentId: undefined, // Worker doesn't have direct departmentId, uses WorkerDepartment (many-to-many)
                 stationId: station1.id,
                 shiftId: shift1?.id,
                 rankedSkills: [Skill.framing]
@@ -70,7 +67,7 @@ async function main() {
             {
                 firstName: 'Bob',
                 lastName: 'Jones',
-                stationId: station1.id, // Assigned to a station even if logistics
+                stationId: station1.id,
                 shiftId: shift2?.id,
                 rankedSkills: [Skill.boxMoving]
             },
@@ -82,8 +79,6 @@ async function main() {
     const profileStandard = await prisma.moduleProfile.create({
         data: {
             name: 'Standard Unit',
-            // Description does not exist
-            // ModuleAttributes are many-to-many via ModuleProfileModuleAttribute
         }
     });
     console.log('✅ Module Profiles seeded');
@@ -92,7 +87,6 @@ async function main() {
     const templateA = await prisma.travelerTemplate.create({
         data: {
             name: 'Residential Flow A',
-            // No departmentId on TravelerTemplate
         }
     });
 
@@ -106,8 +100,6 @@ async function main() {
             order: 1,
             minWorkers: 2,
             maxWorkers: 3,
-            // laborHours key doesn't exist directly. Usually implied by TimeStudies or nonWorkerTaskDuration.
-            // We will create a TimeStudy for it below to establish "duration".
         }
     });
 
@@ -138,20 +130,22 @@ async function main() {
     });
 
     // Create TimeStudies to give them a "standard time"
-    // (Assuming simple average for now)
     await prisma.timeStudy.create({
         data: {
             taskTemplateId: taskTmpl1.id,
-            durationSeconds: 4.5 * 3600, // 4.5 hours
-            isVoid: false
-            // Note: Vederra schema for TimeStudy might differ, checking... 
-            // Schema in view_file showed: taskTemplateId, module?
-            // Wait, I didn't see TimeStudy model fully in the view.
-            // Let's assume basic creation passes, or skip if unsure.
-            // Actually, let's skip TimeStudy for now to avoid specific errors, 
-            // as the UI just needs the templates for dropdowns.
+            clockTime: 4.5, // Assuming Hours based on typical MES usage
+            workerCount: 2,
+            date: new Date()
         }
-    }).catch(() => console.log('⚠️ Could not seed TimeStudy (schema might differ), skipping duration.'));
+    });
+    await prisma.timeStudy.create({
+        data: {
+            taskTemplateId: taskTmpl2.id,
+            clockTime: 3.0,
+            workerCount: 1,
+            date: new Date()
+        }
+    });
 
     console.log('✅ Traveler Templates seeded');
 
