@@ -7,6 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== Existing Models ====================
+
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
@@ -45,26 +47,26 @@ model Timelog {
 }
 
 model Plan {
-  id          String                 @id @default(uuid())
-  name        String?
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
+  id            String                 @id @default(uuid())
+  name          String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
   inputSnapshot Json?
-  assignments WorkerTaskAssignment[]
+  assignments   WorkerTaskAssignment[]
 
   @@map("plans")
 }
 
 model WorkerTaskAssignment {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   planId    String
-  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  plan      Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
   workerId  String
   taskId    String
   shiftId   String?
   startTime DateTime
   endTime   DateTime
-  status    String?   @default("WORKING")  // WORKING, ON_HOLD, IDLE
+  status    String?   @default("WORKING")
   heldAt    DateTime?
 
   @@index([planId])
@@ -72,4 +74,115 @@ model WorkerTaskAssignment {
   @@index([taskId])
   @@index([status])
   @@map("worker_task_assignments")
+}
+
+// ==================== KAN-493: New Models ====================
+
+model Shift {
+  id          String    @id @default(uuid())
+  name        String
+  startTime   String    // e.g., "06:00"
+  endTime     String    // e.g., "14:30"
+  workers     Worker[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("shifts")
+}
+
+model Department {
+  id            String          @id @default(uuid())
+  name          String          @unique
+  description   String?
+  workers       Worker[]
+  taskTemplates TaskTemplate[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("departments")
+}
+
+model ModuleProfile {
+  id               String            @id @default(uuid())
+  name             String
+  description      String?
+  moduleAttributes ModuleAttribute[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@map("module_profiles")
+}
+
+model ModuleAttribute {
+  id              String        @id @default(uuid())
+  moduleProfileId String
+  moduleProfile   ModuleProfile @relation(fields: [moduleProfileId], references: [id], onDelete: Cascade)
+  attributeName   String
+  attributeValue  String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([moduleProfileId])
+  @@map("module_attributes")
+}
+
+model TravelerTemplate {
+  id            String         @id @default(uuid())
+  name          String
+  description   String?
+  taskTemplates TaskTemplate[]
+  timeStudies   TimeStudy[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("traveler_templates")
+}
+
+model TaskTemplate {
+  id                  String           @id @default(uuid())
+  travelerTemplateId  String
+  travelerTemplate    TravelerTemplate @relation(fields: [travelerTemplateId], references: [id], onDelete: Cascade)
+  taskName            String
+  departmentId        String?
+  department          Department?      @relation(fields: [departmentId], references: [id])
+  minCrew             Int              @default(1)
+  optimalCrew         Int              @default(1)
+  maxCrew             Int              @default(4)
+  laborHours          Float
+  prerequisiteTaskIds String[]         @default([])
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([travelerTemplateId])
+  @@index([departmentId])
+  @@map("task_templates")
+}
+
+model TimeStudy {
+  id                 String           @id @default(uuid())
+  travelerTemplateId String
+  travelerTemplate   TravelerTemplate @relation(fields: [travelerTemplateId], references: [id], onDelete: Cascade)
+  taskName           String
+  averageTime        Float            // in hours
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([travelerTemplateId])
+  @@map("time_studies")
+}
+
+model Worker {
+  id           String      @id @default(uuid())
+  name         String
+  crews        String[]
+  shiftId      String?
+  shift        Shift?      @relation(fields: [shiftId], references: [id])
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([shiftId])
+  @@index([departmentId])
+  @@map("workers")
 }

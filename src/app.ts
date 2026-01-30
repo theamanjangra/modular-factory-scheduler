@@ -10,6 +10,7 @@ import { ENV } from "./config/envConfig";
 // import { projectRoutes } from "./routes/project.route";
 import workerTasksRouter from './routes/workerTasks';
 import plansRouter from './routes/plans';
+import masterDataRouter from './routes/masterData';
 // import { chatRoutes } from "./routes/chatRoutes";
 
 const app = express();
@@ -51,6 +52,7 @@ app.get('/health', (req, res) => {
 // app.use("/api/projects", projectRoutes);
 app.use("/api/v1/worker-tasks", workerTasksRouter);
 app.use("/api/v1/plans", plansRouter);
+app.use("/api/v1/master", masterDataRouter);
 // app.use("/api/chat", chatRoutes);
 
 // Catch-all: Serve React app for client-side routing (e.g., /cross-dept)
