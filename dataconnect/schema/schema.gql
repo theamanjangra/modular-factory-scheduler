@@ -109,6 +109,22 @@ enum PtoType {
   court
 }
 # =====================
+# Master Data
+# =====================
+
+type Shift @table {
+  id: String!
+  name: String!
+  startTime: Timestamp
+  endTime: Timestamp
+}
+
+type Department @table {
+  id: String!
+  name: String!
+}
+
+# =====================
 # Core Project Structure
 # =====================
 

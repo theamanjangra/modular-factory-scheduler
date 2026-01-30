@@ -1,7 +1,7 @@
 specVersion: "v1"
 
 # Unique service name for Firebase Data Connect
-serviceId: "vederra-dev-d4327-service"
+serviceId: "vederra-scheduler-2-service"
 
 # Region for deployment
 location: "us-central1"
@@ -13,9 +13,9 @@ schema:
   # PostgreSQL Data Source Configuration
   datasource:
     postgresql:
-      database: "vederra-dev-d4327-database"
+      database: "vederra-scheduler-2-database"
       cloudSql:
-        instanceId: "firebasevederradev-fdc"
+        instanceId: "vederra-scheduler-2-instance"
       # Validation mode — use STRICT after all schema errors are fixed
       schemaValidation: "COMPATIBLE"
 
