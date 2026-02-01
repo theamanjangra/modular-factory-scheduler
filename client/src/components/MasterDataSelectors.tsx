@@ -45,6 +45,13 @@ export const MasterDataSelectors: React.FC<MasterDataSelectorsProps> = ({ onSele
                     listTravelerTemplates(dc)
                 ]);
 
+                console.log('DEBUG: Raw Data Connect Responses', {
+                    shifts: dShifts.data,
+                    depts: dDepts.data,
+                    profiles: dProfiles.data,
+                    templs: dTempls.data
+                });
+
                 // Map results to state (handling potential nulls/undefined safely)
                 if (dShifts.data.shifts) {
                     setShifts(dShifts.data.shifts.map(s => ({
