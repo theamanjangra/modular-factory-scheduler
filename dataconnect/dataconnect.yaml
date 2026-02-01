@@ -23,8 +23,8 @@ schema:
 connectorDirs:
   - "./connectors"
 
-generate:
-  javascriptSdk:
-    outputDir: "../client/src/generated"
-    package: "@vederra/sdk"
+# generate:
+#   javascriptSdk:
+#     outputDir: "../client/src/generated"
+#     package: "@vederra/sdk"
 
