@@ -1,5 +1,5 @@
 connectorId: default
-authMode: PUBLIC
+# authMode: PUBLIC
 # generate:
 #   javascriptSdk:
 #     - outputDir: ..\..\client\src\dataconnect-generated
