@@ -1,0 +1,31 @@
+
+# Seed Shifts
+mutation SeedShifts @auth(level: PUBLIC) {
+  shift1: shift_upsert(data: {
+    id: "shift-1-uuid",
+    name: "Shift 1 (Day)",
+    startTime: { seconds: 1700028000, nanoseconds: 0 }, # Example Timestamp
+    endTime: { seconds: 1700058600, nanoseconds: 0 }
+  })
+  
+  shift2: shift_upsert(data: {
+    id: "shift-2-uuid",
+    name: "Shift 2 (Swing)",
+    startTime: { seconds: 1700056800, nanoseconds: 0 },
+    endTime: { seconds: 1700087400, nanoseconds: 0 }
+  })
+}
+
+# Seed Departments
+mutation SeedDepartments @auth(level: PUBLIC) {
+  dept1: department_upsert(data: { id: "dept-assembly", name: "Assembly" })
+  dept2: department_upsert(data: { id: "dept-logistics", name: "Logistics" })
+  dept3: department_upsert(data: { id: "dept-quality", name: "Quality Assurance" })
+  dept4: department_upsert(data: { id: "dept-welding", name: "Welding" })
+}
+
+# Seed Module Profiles
+mutation SeedModuleProfiles @auth(level: PUBLIC) {
+  mp1: moduleProfile_upsert(data: { id: "mp-standard", name: "Standard Unit" })
+  mp2: moduleProfile_upsert(data: { id: "mp-custom", name: "Custom Build" })
+}

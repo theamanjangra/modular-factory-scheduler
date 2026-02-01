@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, Users, Box, FileText, Briefcase } from 'lucide-react';
+import { listShifts, listDepartments, listModuleProfiles, listTravelerTemplates } from "../dataconnect-generated";
+import { dc } from "../firebase";
 
-// Types matching backend response
-interface StartEnd { startTime: string; endTime: string; }
+// Types matching SDK response (simplified)
 interface Shift { id: string; name: string; startTime: string; endTime: string; }
 interface Department { id: string; name: string; }
 interface ModuleProfile { id: string; name: string; }
 interface TravelerTemplate { id: string; name: string; }
-interface Worker { id: string; firstName: string; lastName: string; }
 
 interface MasterDataSelectorsProps {
     onSelectionChange: (selections: {
@@ -33,30 +33,51 @@ export const MasterDataSelectors: React.FC<MasterDataSelectorsProps> = ({ onSele
     const [selectedProfile, setSelectedProfile] = useState<string>('');
     const [selectedTempl, setSelectedTempl] = useState<string>('');
 
-    // Fetch Data
+    // Fetch Data using Data Connect SDK
     useEffect(() => {
         const fetchMasterData = async () => {
-            const API_BASE = import.meta.env.VITE_API_URL || '';
             try {
-                const [resShifts, resDepts, resProfiles, resTempls] = await Promise.all([
-                    fetch(`${API_BASE}/api/v1/master/shifts`),
-                    fetch(`${API_BASE}/api/v1/master/departments`),
-                    fetch(`${API_BASE}/api/v1/master/module-profiles`),
-                    fetch(`${API_BASE}/api/v1/master/traveler-templates`)
+                // Execute parallel queries
+                const [dShifts, dDepts, dProfiles, dTempls] = await Promise.all([
+                    listShifts(dc),
+                    listDepartments(dc),
+                    listModuleProfiles(dc),
+                    listTravelerTemplates(dc)
                 ]);
 
-                const dShifts = await resShifts.json();
-                const dDepts = await resDepts.json();
-                const dProfiles = await resProfiles.json();
-                const dTempls = await resTempls.json();
+                // Map results to state (handling potential nulls/undefined safely)
+                if (dShifts.data.shifts) {
+                    setShifts(dShifts.data.shifts.map(s => ({
+                        id: s.id,
+                        name: s.name || 'Unnamed',
+                        startTime: s.startTime || '',
+                        endTime: s.endTime || ''
+                    })));
+                }
 
-                if (dShifts.success) setShifts(dShifts.data);
-                if (dDepts.success) setDepartments(dDepts.data);
-                if (dProfiles.success) setModuleProfiles(dProfiles.data);
-                if (dTempls.success) setTravelerTemplates(dTempls.data);
+                if (dDepts.data.departments) {
+                    setDepartments(dDepts.data.departments.map(d => ({
+                        id: d.id,
+                        name: d.name || 'Unnamed Dept'
+                    })));
+                }
+
+                if (dProfiles.data.moduleProfiles) {
+                    setModuleProfiles(dProfiles.data.moduleProfiles.map(p => ({
+                        id: p.id,
+                        name: p.name || 'Unnamed Profile'
+                    })));
+                }
+
+                if (dTempls.data.travelerTemplates) {
+                    setTravelerTemplates(dTempls.data.travelerTemplates.map(t => ({
+                        id: t.id,
+                        name: t.name || 'Unnamed Template'
+                    })));
+                }
 
             } catch (e) {
-                console.error("Failed to fetch master data", e);
+                console.error("Failed to fetch master data from Data Connect", e);
             }
         };
 
@@ -85,7 +106,12 @@ export const MasterDataSelectors: React.FC<MasterDataSelectorsProps> = ({ onSele
                     className="text-xs border-none bg-transparent font-medium text-gray-700 focus:ring-0 cursor-pointer hover:bg-white/50 rounded"
                 >
                     <option value="">Shift 1 (Default)</option>
-                    {shifts.map(s => <option key={s.id} value={s.id}>{s.name} ({new Date(s.startTime).getUTCHours()}:00-{new Date(s.endTime).getUTCHours()}:00)</option>)}
+                    {shifts.map(s => (
+                        <option key={s.id} value={s.id}>
+                            {s.name}
+                            {s.startTime && s.endTime ? ` (${new Date(s.startTime).getUTCHours()}:00-${new Date(s.endTime).getUTCHours()}:00)` : ''}
+                        </option>
+                    ))}
                 </select>
                 <span className="text-gray-300">|</span>
                 <select
@@ -141,3 +167,4 @@ export const MasterDataSelectors: React.FC<MasterDataSelectorsProps> = ({ onSele
         </div>
     );
 };
+

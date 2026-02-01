@@ -1,0 +1,72 @@
+
+# ========================
+# MUTATIONS (Write)
+# ========================
+
+# Create or update a Shift
+mutation UpsertShift($id: UUID!, $name: String!, $startTime: Timestamp, $endTime: Timestamp) @auth(level: PUBLIC) {
+  shift_upsert(data: {
+    id: $id,
+    name: $name,
+    startTime: $startTime,
+    endTime: $endTime
+  })
+}
+
+# Create or update a Department
+mutation UpsertDepartment($id: UUID!, $name: String!) @auth(level: PUBLIC) {
+  department_upsert(data: {
+    id: $id,
+    name: $name
+  })
+}
+
+# Create or update a Module Profile
+mutation UpsertModuleProfile($id: UUID!, $name: String!) @auth(level: PUBLIC) {
+  moduleProfile_upsert(data: {
+    id: $id,
+    name: $name
+  })
+}
+
+# Create a Traveler Template
+mutation UpsertTravelerTemplate($id: UUID!, $name: String!) @auth(level: PUBLIC) {
+  travelerTemplate_upsert(data: {
+    id: $id,
+    name: $name
+  })
+}
+
+# ========================
+# QUERIES (Read)
+# ========================
+
+query ListShifts @auth(level: PUBLIC) {
+  shifts {
+    id
+    name
+    startTime
+    endTime
+  }
+}
+
+query ListDepartments @auth(level: PUBLIC) {
+  departments {
+    id
+    name
+  }
+}
+
+query ListModuleProfiles @auth(level: PUBLIC) {
+  moduleProfiles {
+    id
+    name
+  }
+}
+
+query ListTravelerTemplates @auth(level: PUBLIC) {
+  travelerTemplates {
+    id
+    name
+  }
+}
