@@ -29,6 +29,7 @@ mutation UpsertModuleProfile($id: UUID!, $name: String!) @auth(level: PUBLIC) {
   })
 }
 
+
 # Create a Traveler Template
 mutation UpsertTravelerTemplate($id: UUID!, $name: String!) @auth(level: PUBLIC) {
   travelerTemplate_upsert(data: {
@@ -36,6 +37,104 @@ mutation UpsertTravelerTemplate($id: UUID!, $name: String!) @auth(level: PUBLIC)
     name: $name
   })
 }
+
+# Create or Update Station (Required for Workers/Tasks)
+mutation UpsertStation($id: UUID!, $name: String!, $order: Int) @auth(level: PUBLIC) {
+  station_upsert(data: {
+    id: $id,
+    name: $name,
+    order: $order
+  })
+}
+
+# Create or Update Worker
+mutation UpsertWorker($id: UUID!, $firstName: String!, $lastName: String!, $stationId: UUID, $role: WorkerRole) @auth(level: PUBLIC) {
+  worker_upsert(data: {
+    id: $id,
+    firstName: $firstName,
+    lastName: $lastName,
+    station: { id: $stationId },
+    role: $role
+  })
+}
+
+# Create Project
+mutation UpsertProject($id: UUID!, $name: String!) @auth(level: PUBLIC) {
+  project_upsert(data: {
+    id: $id,
+    name: $name
+  })
+}
+
+# Module Profile with Project Link
+mutation UpsertModuleProfileWithProject($id: UUID!, $name: String!, $projectId: UUID!) @auth(level: PUBLIC) {
+  moduleProfile_upsert(data: {
+    id: $id,
+    name: $name,
+    project: { id: $projectId }
+  })
+}
+
+# Module Attribute
+mutation UpsertModuleAttribute($id: UUID!, $name: String!, $type: ModuleAttributeType!) @auth(level: PUBLIC) {
+  moduleAttribute_upsert(data: {
+    id: $id,
+    name: $name,
+    moduleAttributeType: $type
+  })
+}
+
+# Module Profile Attribute Link
+mutation UpsertModuleProfileModuleAttribute($id: UUID!, $profileId: UUID!, $attributeId: UUID!, $value: String!) @auth(level: PUBLIC) {
+  moduleProfileModuleAttribute_upsert(data: {
+    id: $id,
+    moduleProfile: { id: $profileId },
+    moduleAttribute: { id: $attributeId },
+    value: $value
+  })
+}
+
+# Task Template
+mutation UpsertTaskTemplate($id: UUID!, $name: String!, $stationId: UUID!, $departmentId: UUID!, $order: Int!, $minWorkers: Int!, $maxWorkers: Int!, $type: TaskType!) @auth(level: PUBLIC) {
+  taskTemplate_upsert(data: {
+    id: $id,
+    name: $name,
+    station: { id: $stationId },
+    department: { id: $departmentId },
+    order: $order,
+    minWorkers: $minWorkers,
+    maxWorkers: $maxWorkers,
+    taskType: $type
+  })
+}
+
+# Task Template Prerequisite Link
+mutation LinkTaskTemplatePrereq($id: UUID!, $prereqId: UUID!) @auth(level: PUBLIC) {
+  taskTemplate_update(id: $id, data: {
+    prerequisiteTaskTemplate: { id: $prereqId }
+  })
+}
+
+# Time Study
+mutation UpsertTimeStudy($id: UUID!, $taskTemplateId: UUID!, $clockTime: Float!, $workerCount: Int!) @auth(level: PUBLIC) {
+  timeStudy_upsert(data: {
+    id: $id,
+    taskTemplate: { id: $taskTemplateId },
+    clockTime: $clockTime,
+    workerCount: $workerCount
+  })
+}
+
+# Time Study Attribute Driver
+mutation UpsertTimeStudyModuleAttribute($id: UUID!, $timeStudyId: UUID!, $attributeId: UUID!, $value: String!) @auth(level: PUBLIC) {
+  timeStudyModuleAttribute_upsert(data: {
+    id: $id,
+    timeStudy: { id: $timeStudyId },
+    moduleAttribute: { id: $attributeId },
+    value: $value
+  })
+}
+
 
 # ========================
 # QUERIES (Read)

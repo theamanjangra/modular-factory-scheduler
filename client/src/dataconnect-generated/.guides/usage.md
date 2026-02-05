@@ -12,7 +12,7 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useUpsertShift, useUpsertDepartment, useUpsertModuleProfile, useUpsertTravelerTemplate, useListShifts, useListDepartments, useListModuleProfiles, useListTravelerTemplates } from '@dataconnect/generated/react';
+import { useUpsertShift, useUpsertDepartment, useUpsertModuleProfile, useUpsertTravelerTemplate, useUpsertStation, useUpsertWorker, useUpsertProject, useUpsertModuleProfileWithProject, useUpsertModuleAttribute, useUpsertModuleProfileModuleAttribute } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
 
 const { data, isPending, isSuccess, isError, error } = useUpsertShift(upsertShiftVars);
@@ -23,13 +23,17 @@ const { data, isPending, isSuccess, isError, error } = useUpsertModuleProfile(up
 
 const { data, isPending, isSuccess, isError, error } = useUpsertTravelerTemplate(upsertTravelerTemplateVars);
 
-const { data, isPending, isSuccess, isError, error } = useListShifts();
+const { data, isPending, isSuccess, isError, error } = useUpsertStation(upsertStationVars);
 
-const { data, isPending, isSuccess, isError, error } = useListDepartments();
+const { data, isPending, isSuccess, isError, error } = useUpsertWorker(upsertWorkerVars);
 
-const { data, isPending, isSuccess, isError, error } = useListModuleProfiles();
+const { data, isPending, isSuccess, isError, error } = useUpsertProject(upsertProjectVars);
 
-const { data, isPending, isSuccess, isError, error } = useListTravelerTemplates();
+const { data, isPending, isSuccess, isError, error } = useUpsertModuleProfileWithProject(upsertModuleProfileWithProjectVars);
+
+const { data, isPending, isSuccess, isError, error } = useUpsertModuleAttribute(upsertModuleAttributeVars);
+
+const { data, isPending, isSuccess, isError, error } = useUpsertModuleProfileModuleAttribute(upsertModuleProfileModuleAttributeVars);
 
 ```
 
@@ -68,7 +72,7 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { upsertShift, upsertDepartment, upsertModuleProfile, upsertTravelerTemplate, listShifts, listDepartments, listModuleProfiles, listTravelerTemplates } from '@dataconnect/generated';
+import { upsertShift, upsertDepartment, upsertModuleProfile, upsertTravelerTemplate, upsertStation, upsertWorker, upsertProject, upsertModuleProfileWithProject, upsertModuleAttribute, upsertModuleProfileModuleAttribute } from '@dataconnect/generated';
 
 
 // Operation UpsertShift:  For variables, look at type UpsertShiftVars in ../index.d.ts
@@ -83,17 +87,23 @@ const { data } = await UpsertModuleProfile(dataConnect, upsertModuleProfileVars)
 // Operation UpsertTravelerTemplate:  For variables, look at type UpsertTravelerTemplateVars in ../index.d.ts
 const { data } = await UpsertTravelerTemplate(dataConnect, upsertTravelerTemplateVars);
 
-// Operation ListShifts: 
-const { data } = await ListShifts(dataConnect);
+// Operation UpsertStation:  For variables, look at type UpsertStationVars in ../index.d.ts
+const { data } = await UpsertStation(dataConnect, upsertStationVars);
 
-// Operation ListDepartments: 
-const { data } = await ListDepartments(dataConnect);
+// Operation UpsertWorker:  For variables, look at type UpsertWorkerVars in ../index.d.ts
+const { data } = await UpsertWorker(dataConnect, upsertWorkerVars);
 
-// Operation ListModuleProfiles: 
-const { data } = await ListModuleProfiles(dataConnect);
+// Operation UpsertProject:  For variables, look at type UpsertProjectVars in ../index.d.ts
+const { data } = await UpsertProject(dataConnect, upsertProjectVars);
 
-// Operation ListTravelerTemplates: 
-const { data } = await ListTravelerTemplates(dataConnect);
+// Operation UpsertModuleProfileWithProject:  For variables, look at type UpsertModuleProfileWithProjectVars in ../index.d.ts
+const { data } = await UpsertModuleProfileWithProject(dataConnect, upsertModuleProfileWithProjectVars);
+
+// Operation UpsertModuleAttribute:  For variables, look at type UpsertModuleAttributeVars in ../index.d.ts
+const { data } = await UpsertModuleAttribute(dataConnect, upsertModuleAttributeVars);
+
+// Operation UpsertModuleProfileModuleAttribute:  For variables, look at type UpsertModuleProfileModuleAttributeVars in ../index.d.ts
+const { data } = await UpsertModuleProfileModuleAttribute(dataConnect, upsertModuleProfileModuleAttributeVars);
 
 
 ```

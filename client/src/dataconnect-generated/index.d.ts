@@ -8,6 +8,25 @@ export type Int64String = string;
 export type DateString = string;
 
 
+export enum ModuleAttributeType {
+  number = "number",
+  boolean = "boolean",
+};
+
+export enum TaskType {
+  default = "default",
+  subassembly = "subassembly",
+  nonWorker = "nonWorker",
+};
+
+export enum WorkerRole {
+  worker = "worker",
+  lead = "lead",
+  qam = "qam",
+  supervisor = "supervisor",
+  admin = "admin",
+};
+
 
 
 export interface AdhocInspectionItem_Key {
@@ -98,6 +117,15 @@ export interface Issue_Key {
 export interface JobApplication_Key {
   id: UUIDString;
   __typename?: 'JobApplication_Key';
+}
+
+export interface LinkTaskTemplatePrereqData {
+  taskTemplate_update?: TaskTemplate_Key | null;
+}
+
+export interface LinkTaskTemplatePrereqVariables {
+  id: UUIDString;
+  prereqId: UUIDString;
 }
 
 export interface ListDepartmentsData {
@@ -279,11 +307,51 @@ export interface UpsertDepartmentVariables {
   name: string;
 }
 
+export interface UpsertModuleAttributeData {
+  moduleAttribute_upsert: ModuleAttribute_Key;
+}
+
+export interface UpsertModuleAttributeVariables {
+  id: UUIDString;
+  name: string;
+  type: ModuleAttributeType;
+}
+
 export interface UpsertModuleProfileData {
   moduleProfile_upsert: ModuleProfile_Key;
 }
 
+export interface UpsertModuleProfileModuleAttributeData {
+  moduleProfileModuleAttribute_upsert: ModuleProfileModuleAttribute_Key;
+}
+
+export interface UpsertModuleProfileModuleAttributeVariables {
+  id: UUIDString;
+  profileId: UUIDString;
+  attributeId: UUIDString;
+  value: string;
+}
+
 export interface UpsertModuleProfileVariables {
+  id: UUIDString;
+  name: string;
+}
+
+export interface UpsertModuleProfileWithProjectData {
+  moduleProfile_upsert: ModuleProfile_Key;
+}
+
+export interface UpsertModuleProfileWithProjectVariables {
+  id: UUIDString;
+  name: string;
+  projectId: UUIDString;
+}
+
+export interface UpsertProjectData {
+  project_upsert: Project_Key;
+}
+
+export interface UpsertProjectVariables {
   id: UUIDString;
   name: string;
 }
@@ -299,6 +367,53 @@ export interface UpsertShiftVariables {
   endTime?: TimestampString | null;
 }
 
+export interface UpsertStationData {
+  station_upsert: Station_Key;
+}
+
+export interface UpsertStationVariables {
+  id: UUIDString;
+  name: string;
+  order?: number | null;
+}
+
+export interface UpsertTaskTemplateData {
+  taskTemplate_upsert: TaskTemplate_Key;
+}
+
+export interface UpsertTaskTemplateVariables {
+  id: UUIDString;
+  name: string;
+  stationId: UUIDString;
+  departmentId: UUIDString;
+  order: number;
+  minWorkers: number;
+  maxWorkers: number;
+  type: TaskType;
+}
+
+export interface UpsertTimeStudyData {
+  timeStudy_upsert: TimeStudy_Key;
+}
+
+export interface UpsertTimeStudyModuleAttributeData {
+  timeStudyModuleAttribute_upsert: TimeStudyModuleAttribute_Key;
+}
+
+export interface UpsertTimeStudyModuleAttributeVariables {
+  id: UUIDString;
+  timeStudyId: UUIDString;
+  attributeId: UUIDString;
+  value: string;
+}
+
+export interface UpsertTimeStudyVariables {
+  id: UUIDString;
+  taskTemplateId: UUIDString;
+  clockTime: number;
+  workerCount: number;
+}
+
 export interface UpsertTravelerTemplateData {
   travelerTemplate_upsert: TravelerTemplate_Key;
 }
@@ -306,6 +421,18 @@ export interface UpsertTravelerTemplateData {
 export interface UpsertTravelerTemplateVariables {
   id: UUIDString;
   name: string;
+}
+
+export interface UpsertWorkerData {
+  worker_upsert: Worker_Key;
+}
+
+export interface UpsertWorkerVariables {
+  id: UUIDString;
+  firstName: string;
+  lastName: string;
+  stationId?: UUIDString | null;
+  role?: WorkerRole | null;
 }
 
 export interface User_Key {
@@ -390,6 +517,126 @@ export const upsertTravelerTemplateRef: UpsertTravelerTemplateRef;
 
 export function upsertTravelerTemplate(vars: UpsertTravelerTemplateVariables): MutationPromise<UpsertTravelerTemplateData, UpsertTravelerTemplateVariables>;
 export function upsertTravelerTemplate(dc: DataConnect, vars: UpsertTravelerTemplateVariables): MutationPromise<UpsertTravelerTemplateData, UpsertTravelerTemplateVariables>;
+
+interface UpsertStationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertStationVariables): MutationRef<UpsertStationData, UpsertStationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertStationVariables): MutationRef<UpsertStationData, UpsertStationVariables>;
+  operationName: string;
+}
+export const upsertStationRef: UpsertStationRef;
+
+export function upsertStation(vars: UpsertStationVariables): MutationPromise<UpsertStationData, UpsertStationVariables>;
+export function upsertStation(dc: DataConnect, vars: UpsertStationVariables): MutationPromise<UpsertStationData, UpsertStationVariables>;
+
+interface UpsertWorkerRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertWorkerVariables): MutationRef<UpsertWorkerData, UpsertWorkerVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertWorkerVariables): MutationRef<UpsertWorkerData, UpsertWorkerVariables>;
+  operationName: string;
+}
+export const upsertWorkerRef: UpsertWorkerRef;
+
+export function upsertWorker(vars: UpsertWorkerVariables): MutationPromise<UpsertWorkerData, UpsertWorkerVariables>;
+export function upsertWorker(dc: DataConnect, vars: UpsertWorkerVariables): MutationPromise<UpsertWorkerData, UpsertWorkerVariables>;
+
+interface UpsertProjectRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertProjectVariables): MutationRef<UpsertProjectData, UpsertProjectVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertProjectVariables): MutationRef<UpsertProjectData, UpsertProjectVariables>;
+  operationName: string;
+}
+export const upsertProjectRef: UpsertProjectRef;
+
+export function upsertProject(vars: UpsertProjectVariables): MutationPromise<UpsertProjectData, UpsertProjectVariables>;
+export function upsertProject(dc: DataConnect, vars: UpsertProjectVariables): MutationPromise<UpsertProjectData, UpsertProjectVariables>;
+
+interface UpsertModuleProfileWithProjectRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertModuleProfileWithProjectVariables): MutationRef<UpsertModuleProfileWithProjectData, UpsertModuleProfileWithProjectVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertModuleProfileWithProjectVariables): MutationRef<UpsertModuleProfileWithProjectData, UpsertModuleProfileWithProjectVariables>;
+  operationName: string;
+}
+export const upsertModuleProfileWithProjectRef: UpsertModuleProfileWithProjectRef;
+
+export function upsertModuleProfileWithProject(vars: UpsertModuleProfileWithProjectVariables): MutationPromise<UpsertModuleProfileWithProjectData, UpsertModuleProfileWithProjectVariables>;
+export function upsertModuleProfileWithProject(dc: DataConnect, vars: UpsertModuleProfileWithProjectVariables): MutationPromise<UpsertModuleProfileWithProjectData, UpsertModuleProfileWithProjectVariables>;
+
+interface UpsertModuleAttributeRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertModuleAttributeVariables): MutationRef<UpsertModuleAttributeData, UpsertModuleAttributeVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertModuleAttributeVariables): MutationRef<UpsertModuleAttributeData, UpsertModuleAttributeVariables>;
+  operationName: string;
+}
+export const upsertModuleAttributeRef: UpsertModuleAttributeRef;
+
+export function upsertModuleAttribute(vars: UpsertModuleAttributeVariables): MutationPromise<UpsertModuleAttributeData, UpsertModuleAttributeVariables>;
+export function upsertModuleAttribute(dc: DataConnect, vars: UpsertModuleAttributeVariables): MutationPromise<UpsertModuleAttributeData, UpsertModuleAttributeVariables>;
+
+interface UpsertModuleProfileModuleAttributeRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertModuleProfileModuleAttributeVariables): MutationRef<UpsertModuleProfileModuleAttributeData, UpsertModuleProfileModuleAttributeVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertModuleProfileModuleAttributeVariables): MutationRef<UpsertModuleProfileModuleAttributeData, UpsertModuleProfileModuleAttributeVariables>;
+  operationName: string;
+}
+export const upsertModuleProfileModuleAttributeRef: UpsertModuleProfileModuleAttributeRef;
+
+export function upsertModuleProfileModuleAttribute(vars: UpsertModuleProfileModuleAttributeVariables): MutationPromise<UpsertModuleProfileModuleAttributeData, UpsertModuleProfileModuleAttributeVariables>;
+export function upsertModuleProfileModuleAttribute(dc: DataConnect, vars: UpsertModuleProfileModuleAttributeVariables): MutationPromise<UpsertModuleProfileModuleAttributeData, UpsertModuleProfileModuleAttributeVariables>;
+
+interface UpsertTaskTemplateRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertTaskTemplateVariables): MutationRef<UpsertTaskTemplateData, UpsertTaskTemplateVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertTaskTemplateVariables): MutationRef<UpsertTaskTemplateData, UpsertTaskTemplateVariables>;
+  operationName: string;
+}
+export const upsertTaskTemplateRef: UpsertTaskTemplateRef;
+
+export function upsertTaskTemplate(vars: UpsertTaskTemplateVariables): MutationPromise<UpsertTaskTemplateData, UpsertTaskTemplateVariables>;
+export function upsertTaskTemplate(dc: DataConnect, vars: UpsertTaskTemplateVariables): MutationPromise<UpsertTaskTemplateData, UpsertTaskTemplateVariables>;
+
+interface LinkTaskTemplatePrereqRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: LinkTaskTemplatePrereqVariables): MutationRef<LinkTaskTemplatePrereqData, LinkTaskTemplatePrereqVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: LinkTaskTemplatePrereqVariables): MutationRef<LinkTaskTemplatePrereqData, LinkTaskTemplatePrereqVariables>;
+  operationName: string;
+}
+export const linkTaskTemplatePrereqRef: LinkTaskTemplatePrereqRef;
+
+export function linkTaskTemplatePrereq(vars: LinkTaskTemplatePrereqVariables): MutationPromise<LinkTaskTemplatePrereqData, LinkTaskTemplatePrereqVariables>;
+export function linkTaskTemplatePrereq(dc: DataConnect, vars: LinkTaskTemplatePrereqVariables): MutationPromise<LinkTaskTemplatePrereqData, LinkTaskTemplatePrereqVariables>;
+
+interface UpsertTimeStudyRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertTimeStudyVariables): MutationRef<UpsertTimeStudyData, UpsertTimeStudyVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertTimeStudyVariables): MutationRef<UpsertTimeStudyData, UpsertTimeStudyVariables>;
+  operationName: string;
+}
+export const upsertTimeStudyRef: UpsertTimeStudyRef;
+
+export function upsertTimeStudy(vars: UpsertTimeStudyVariables): MutationPromise<UpsertTimeStudyData, UpsertTimeStudyVariables>;
+export function upsertTimeStudy(dc: DataConnect, vars: UpsertTimeStudyVariables): MutationPromise<UpsertTimeStudyData, UpsertTimeStudyVariables>;
+
+interface UpsertTimeStudyModuleAttributeRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertTimeStudyModuleAttributeVariables): MutationRef<UpsertTimeStudyModuleAttributeData, UpsertTimeStudyModuleAttributeVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertTimeStudyModuleAttributeVariables): MutationRef<UpsertTimeStudyModuleAttributeData, UpsertTimeStudyModuleAttributeVariables>;
+  operationName: string;
+}
+export const upsertTimeStudyModuleAttributeRef: UpsertTimeStudyModuleAttributeRef;
+
+export function upsertTimeStudyModuleAttribute(vars: UpsertTimeStudyModuleAttributeVariables): MutationPromise<UpsertTimeStudyModuleAttributeData, UpsertTimeStudyModuleAttributeVariables>;
+export function upsertTimeStudyModuleAttribute(dc: DataConnect, vars: UpsertTimeStudyModuleAttributeVariables): MutationPromise<UpsertTimeStudyModuleAttributeData, UpsertTimeStudyModuleAttributeVariables>;
 
 interface ListShiftsRef {
   /* Allow users to create refs without passing in DataConnect */

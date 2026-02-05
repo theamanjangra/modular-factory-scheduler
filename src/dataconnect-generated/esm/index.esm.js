@@ -1,207 +1,96 @@
 import { queryRef, executeQuery, mutationRef, executeMutation, validateArgs } from 'firebase/data-connect';
 
-export const NoteType = {
-  approval: "approval",
-  rejection: "rejection",
-  photoOnly: "photoOnly",
-  move: "move",
-  moveRequest: "moveRequest",
-  normal: "normal",
-}
-
-export const TaskStatus = {
-  pending: "pending",
-  approved: "approved",
-  rejected: "rejected",
-}
-
-export const WorkerRole = {
-  worker: "worker",
-  lead: "lead",
-  qam: "qam",
-  supervisor: "supervisor",
-  admin: "admin",
-}
-
 export const connectorConfig = {
-  connector: 'vos-web',
-  service: 'vos-web-1',
+  connector: 'default',
+  service: 'vederra-scheduler-2-service',
   location: 'us-central1'
 };
 
-export const getNotesRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetNotes');
-}
-getNotesRef.operationName = 'GetNotes';
-
-export function getNotes(dc) {
-  return executeQuery(getNotesRef(dc));
-}
-
-export const getTravelerTemplatesRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetTravelerTemplates');
-}
-getTravelerTemplatesRef.operationName = 'GetTravelerTemplates';
-
-export function getTravelerTemplates(dc) {
-  return executeQuery(getTravelerTemplatesRef(dc));
-}
-
-export const getStationsRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetStations');
-}
-getStationsRef.operationName = 'GetStations';
-
-export function getStations(dc) {
-  return executeQuery(getStationsRef(dc));
-}
-
-export const getStationByIdRef = (dcOrVars, vars) => {
+export const upsertShiftRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetStationById', inputVars);
+  return mutationRef(dcInstance, 'UpsertShift', inputVars);
 }
-getStationByIdRef.operationName = 'GetStationById';
+upsertShiftRef.operationName = 'UpsertShift';
 
-export function getStationById(dcOrVars, vars) {
-  return executeQuery(getStationByIdRef(dcOrVars, vars));
+export function upsertShift(dcOrVars, vars) {
+  return executeMutation(upsertShiftRef(dcOrVars, vars));
 }
 
-export const getTravelersRef = (dc) => {
+export const upsertDepartmentRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpsertDepartment', inputVars);
+}
+upsertDepartmentRef.operationName = 'UpsertDepartment';
+
+export function upsertDepartment(dcOrVars, vars) {
+  return executeMutation(upsertDepartmentRef(dcOrVars, vars));
+}
+
+export const upsertModuleProfileRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpsertModuleProfile', inputVars);
+}
+upsertModuleProfileRef.operationName = 'UpsertModuleProfile';
+
+export function upsertModuleProfile(dcOrVars, vars) {
+  return executeMutation(upsertModuleProfileRef(dcOrVars, vars));
+}
+
+export const upsertTravelerTemplateRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpsertTravelerTemplate', inputVars);
+}
+upsertTravelerTemplateRef.operationName = 'UpsertTravelerTemplate';
+
+export function upsertTravelerTemplate(dcOrVars, vars) {
+  return executeMutation(upsertTravelerTemplateRef(dcOrVars, vars));
+}
+
+export const listShiftsRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetTravelers');
+  return queryRef(dcInstance, 'ListShifts');
 }
-getTravelersRef.operationName = 'GetTravelers';
+listShiftsRef.operationName = 'ListShifts';
 
-export function getTravelers(dc) {
-  return executeQuery(getTravelersRef(dc));
-}
-
-export const getTravelerByIdRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetTravelerById', inputVars);
-}
-getTravelerByIdRef.operationName = 'GetTravelerById';
-
-export function getTravelerById(dcOrVars, vars) {
-  return executeQuery(getTravelerByIdRef(dcOrVars, vars));
+export function listShifts(dc) {
+  return executeQuery(listShiftsRef(dc));
 }
 
-export const getTravelerStationsRef = (dc) => {
+export const listDepartmentsRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetTravelerStations');
+  return queryRef(dcInstance, 'ListDepartments');
 }
-getTravelerStationsRef.operationName = 'GetTravelerStations';
+listDepartmentsRef.operationName = 'ListDepartments';
 
-export function getTravelerStations(dc) {
-  return executeQuery(getTravelerStationsRef(dc));
-}
-
-export const getTravelerStationsByTravelerRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetTravelerStationsByTraveler', inputVars);
-}
-getTravelerStationsByTravelerRef.operationName = 'GetTravelerStationsByTraveler';
-
-export function getTravelerStationsByTraveler(dcOrVars, vars) {
-  return executeQuery(getTravelerStationsByTravelerRef(dcOrVars, vars));
+export function listDepartments(dc) {
+  return executeQuery(listDepartmentsRef(dc));
 }
 
-export const getWorkersRef = (dc) => {
+export const listModuleProfilesRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetWorkers');
+  return queryRef(dcInstance, 'ListModuleProfiles');
 }
-getWorkersRef.operationName = 'GetWorkers';
+listModuleProfilesRef.operationName = 'ListModuleProfiles';
 
-export function getWorkers(dc) {
-  return executeQuery(getWorkersRef(dc));
+export function listModuleProfiles(dc) {
+  return executeQuery(listModuleProfilesRef(dc));
 }
 
-export const getWorkerTasksRef = (dc) => {
+export const listTravelerTemplatesRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetWorkerTasks');
+  return queryRef(dcInstance, 'ListTravelerTemplates');
 }
-getWorkerTasksRef.operationName = 'GetWorkerTasks';
+listTravelerTemplatesRef.operationName = 'ListTravelerTemplates';
 
-export function getWorkerTasks(dc) {
-  return executeQuery(getWorkerTasksRef(dc));
-}
-
-export const getTasksRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetTasks');
-}
-getTasksRef.operationName = 'GetTasks';
-
-export function getTasks(dc) {
-  return executeQuery(getTasksRef(dc));
-}
-
-export const addNoteRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'AddNote', inputVars);
-}
-addNoteRef.operationName = 'AddNote';
-
-export function addNote(dcOrVars, vars) {
-  return executeMutation(addNoteRef(dcOrVars, vars));
-}
-
-export const createTravelerTemplateRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateTravelerTemplate', inputVars);
-}
-createTravelerTemplateRef.operationName = 'CreateTravelerTemplate';
-
-export function createTravelerTemplate(dcOrVars, vars) {
-  return executeMutation(createTravelerTemplateRef(dcOrVars, vars));
-}
-
-export const createStationRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateStation', inputVars);
-}
-createStationRef.operationName = 'CreateStation';
-
-export function createStation(dcOrVars, vars) {
-  return executeMutation(createStationRef(dcOrVars, vars));
-}
-
-export const travelerStationRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'TravelerStation', inputVars);
-}
-travelerStationRef.operationName = 'TravelerStation';
-
-export function travelerStation(dcOrVars, vars) {
-  return executeMutation(travelerStationRef(dcOrVars, vars));
-}
-
-export const travelerRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'Traveler', inputVars);
-}
-travelerRef.operationName = 'Traveler';
-
-export function traveler(dcOrVars, vars) {
-  return executeMutation(travelerRef(dcOrVars, vars));
+export function listTravelerTemplates(dc) {
+  return executeQuery(listTravelerTemplatesRef(dc));
 }
 

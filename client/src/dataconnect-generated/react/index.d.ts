@@ -1,4 +1,4 @@
-import { UpsertShiftData, UpsertShiftVariables, UpsertDepartmentData, UpsertDepartmentVariables, UpsertModuleProfileData, UpsertModuleProfileVariables, UpsertTravelerTemplateData, UpsertTravelerTemplateVariables, ListShiftsData, ListDepartmentsData, ListModuleProfilesData, ListTravelerTemplatesData } from '../';
+import { UpsertShiftData, UpsertShiftVariables, UpsertDepartmentData, UpsertDepartmentVariables, UpsertModuleProfileData, UpsertModuleProfileVariables, UpsertTravelerTemplateData, UpsertTravelerTemplateVariables, UpsertStationData, UpsertStationVariables, UpsertWorkerData, UpsertWorkerVariables, UpsertProjectData, UpsertProjectVariables, UpsertModuleProfileWithProjectData, UpsertModuleProfileWithProjectVariables, UpsertModuleAttributeData, UpsertModuleAttributeVariables, UpsertModuleProfileModuleAttributeData, UpsertModuleProfileModuleAttributeVariables, UpsertTaskTemplateData, UpsertTaskTemplateVariables, LinkTaskTemplatePrereqData, LinkTaskTemplatePrereqVariables, UpsertTimeStudyData, UpsertTimeStudyVariables, UpsertTimeStudyModuleAttributeData, UpsertTimeStudyModuleAttributeVariables, ListShiftsData, ListDepartmentsData, ListModuleProfilesData, ListTravelerTemplatesData } from '../';
 import { UseDataConnectQueryResult, useDataConnectQueryOptions, UseDataConnectMutationResult, useDataConnectMutationOptions} from '@tanstack-query-firebase/react/data-connect';
 import { UseQueryResult, UseMutationResult} from '@tanstack/react-query';
 import { DataConnect } from 'firebase/data-connect';
@@ -16,6 +16,36 @@ export function useUpsertModuleProfile(dc: DataConnect, options?: useDataConnect
 
 export function useUpsertTravelerTemplate(options?: useDataConnectMutationOptions<UpsertTravelerTemplateData, FirebaseError, UpsertTravelerTemplateVariables>): UseDataConnectMutationResult<UpsertTravelerTemplateData, UpsertTravelerTemplateVariables>;
 export function useUpsertTravelerTemplate(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertTravelerTemplateData, FirebaseError, UpsertTravelerTemplateVariables>): UseDataConnectMutationResult<UpsertTravelerTemplateData, UpsertTravelerTemplateVariables>;
+
+export function useUpsertStation(options?: useDataConnectMutationOptions<UpsertStationData, FirebaseError, UpsertStationVariables>): UseDataConnectMutationResult<UpsertStationData, UpsertStationVariables>;
+export function useUpsertStation(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertStationData, FirebaseError, UpsertStationVariables>): UseDataConnectMutationResult<UpsertStationData, UpsertStationVariables>;
+
+export function useUpsertWorker(options?: useDataConnectMutationOptions<UpsertWorkerData, FirebaseError, UpsertWorkerVariables>): UseDataConnectMutationResult<UpsertWorkerData, UpsertWorkerVariables>;
+export function useUpsertWorker(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertWorkerData, FirebaseError, UpsertWorkerVariables>): UseDataConnectMutationResult<UpsertWorkerData, UpsertWorkerVariables>;
+
+export function useUpsertProject(options?: useDataConnectMutationOptions<UpsertProjectData, FirebaseError, UpsertProjectVariables>): UseDataConnectMutationResult<UpsertProjectData, UpsertProjectVariables>;
+export function useUpsertProject(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertProjectData, FirebaseError, UpsertProjectVariables>): UseDataConnectMutationResult<UpsertProjectData, UpsertProjectVariables>;
+
+export function useUpsertModuleProfileWithProject(options?: useDataConnectMutationOptions<UpsertModuleProfileWithProjectData, FirebaseError, UpsertModuleProfileWithProjectVariables>): UseDataConnectMutationResult<UpsertModuleProfileWithProjectData, UpsertModuleProfileWithProjectVariables>;
+export function useUpsertModuleProfileWithProject(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertModuleProfileWithProjectData, FirebaseError, UpsertModuleProfileWithProjectVariables>): UseDataConnectMutationResult<UpsertModuleProfileWithProjectData, UpsertModuleProfileWithProjectVariables>;
+
+export function useUpsertModuleAttribute(options?: useDataConnectMutationOptions<UpsertModuleAttributeData, FirebaseError, UpsertModuleAttributeVariables>): UseDataConnectMutationResult<UpsertModuleAttributeData, UpsertModuleAttributeVariables>;
+export function useUpsertModuleAttribute(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertModuleAttributeData, FirebaseError, UpsertModuleAttributeVariables>): UseDataConnectMutationResult<UpsertModuleAttributeData, UpsertModuleAttributeVariables>;
+
+export function useUpsertModuleProfileModuleAttribute(options?: useDataConnectMutationOptions<UpsertModuleProfileModuleAttributeData, FirebaseError, UpsertModuleProfileModuleAttributeVariables>): UseDataConnectMutationResult<UpsertModuleProfileModuleAttributeData, UpsertModuleProfileModuleAttributeVariables>;
+export function useUpsertModuleProfileModuleAttribute(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertModuleProfileModuleAttributeData, FirebaseError, UpsertModuleProfileModuleAttributeVariables>): UseDataConnectMutationResult<UpsertModuleProfileModuleAttributeData, UpsertModuleProfileModuleAttributeVariables>;
+
+export function useUpsertTaskTemplate(options?: useDataConnectMutationOptions<UpsertTaskTemplateData, FirebaseError, UpsertTaskTemplateVariables>): UseDataConnectMutationResult<UpsertTaskTemplateData, UpsertTaskTemplateVariables>;
+export function useUpsertTaskTemplate(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertTaskTemplateData, FirebaseError, UpsertTaskTemplateVariables>): UseDataConnectMutationResult<UpsertTaskTemplateData, UpsertTaskTemplateVariables>;
+
+export function useLinkTaskTemplatePrereq(options?: useDataConnectMutationOptions<LinkTaskTemplatePrereqData, FirebaseError, LinkTaskTemplatePrereqVariables>): UseDataConnectMutationResult<LinkTaskTemplatePrereqData, LinkTaskTemplatePrereqVariables>;
+export function useLinkTaskTemplatePrereq(dc: DataConnect, options?: useDataConnectMutationOptions<LinkTaskTemplatePrereqData, FirebaseError, LinkTaskTemplatePrereqVariables>): UseDataConnectMutationResult<LinkTaskTemplatePrereqData, LinkTaskTemplatePrereqVariables>;
+
+export function useUpsertTimeStudy(options?: useDataConnectMutationOptions<UpsertTimeStudyData, FirebaseError, UpsertTimeStudyVariables>): UseDataConnectMutationResult<UpsertTimeStudyData, UpsertTimeStudyVariables>;
+export function useUpsertTimeStudy(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertTimeStudyData, FirebaseError, UpsertTimeStudyVariables>): UseDataConnectMutationResult<UpsertTimeStudyData, UpsertTimeStudyVariables>;
+
+export function useUpsertTimeStudyModuleAttribute(options?: useDataConnectMutationOptions<UpsertTimeStudyModuleAttributeData, FirebaseError, UpsertTimeStudyModuleAttributeVariables>): UseDataConnectMutationResult<UpsertTimeStudyModuleAttributeData, UpsertTimeStudyModuleAttributeVariables>;
+export function useUpsertTimeStudyModuleAttribute(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertTimeStudyModuleAttributeData, FirebaseError, UpsertTimeStudyModuleAttributeVariables>): UseDataConnectMutationResult<UpsertTimeStudyModuleAttributeData, UpsertTimeStudyModuleAttributeVariables>;
 
 export function useListShifts(options?: useDataConnectQueryOptions<ListShiftsData>): UseDataConnectQueryResult<ListShiftsData, undefined>;
 export function useListShifts(dc: DataConnect, options?: useDataConnectQueryOptions<ListShiftsData>): UseDataConnectQueryResult<ListShiftsData, undefined>;

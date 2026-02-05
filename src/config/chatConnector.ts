@@ -6,7 +6,7 @@
 
 import { initializeApp, getApps } from 'firebase/app';
 import { connectDataConnectEmulator, getDataConnect } from 'firebase/data-connect';
-import { connectorConfig } from '../dataconnect-generated/chat';
+import { connectorConfig } from '../dataconnect-generated';
 import dotenv from 'dotenv';
 
 dotenv.config();

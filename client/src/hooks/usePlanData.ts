@@ -24,7 +24,8 @@ interface UsePlanDataResult {
     data: PlanResponse | null;
     loading: boolean;
     error: string | null;
-    runSimulation: (file: File, shiftLength?: number) => Promise<void>;
+    runSimulation: () => Promise<void>;
+    runPlanFile: (file: File, shiftLength?: number) => Promise<void>;
     exportResults: (file: File, shiftLength?: number) => Promise<void>;
     runMultiShift: (file: File, options: MultiShiftOptions) => Promise<void>;
     exportMultiShift: (file: File, options: MultiShiftOptions) => Promise<void>;
@@ -63,9 +64,10 @@ export function usePlanData(): UsePlanDataResult {
     const [error, setError] = useState<string | null>(null);
 
     // Define API Base URL
-    // In DEV (Port 5173), we need to point to 8080.
-    // In PROD (Cloud), we serve from same origin, so use relative path (empty string).
-    const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8080' : '');
+    // In DEV (Port 5173), we rely on Vite Proxy (forwarding /api -> Cloud).
+    // In PROD, we also use relative paths.
+    // So we default to '' unless specific override is provided.
+    const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
     const normalizeIso = (d?: string) => d ? new Date(d).toISOString() : '';
     const normalizeWorkerId = (workerId?: string | null) => {
@@ -114,20 +116,75 @@ export function usePlanData(): UsePlanDataResult {
         return consolidated;
     };
 
-    const runSimulation = async (file: File, shiftLength: number = 10) => {
+    const processMultiShiftResponse = (json: any, startTime: string) => {
+        const tasks = json.tasks || [];
+        const taskNameMap = new Map(tasks.map((t: any) => [t.taskId, t.name]));
+
+        const rawAssignments = (json.assignments || []).map((a: any) => ({
+            workerId: a.workerId,
+            taskId: a.taskId,
+            taskName: taskNameMap.get(a.taskId) || a.taskId,
+            startTime: a.startDate || a.startTime,
+            endTime: a.endDate || a.endTime,
+            type: 'assignment' as const,
+            isWaitTask: a.isWaitTask
+        }));
+
+        const rawIdle = (json.idleWorkers || []).map((a: any, idx: number) => ({
+            workerId: a.workerId,
+            taskId: a.taskId || `idle_${idx}`,
+            taskName: 'IDLE',
+            startTime: a.startDate || a.startTime,
+            endTime: a.endDate || a.endTime,
+            type: 'assignment' as const
+        }));
+
+        const assignments = consolidateAssignments(rawAssignments);
+        const idle = consolidateAssignments(rawIdle);
+
+        const deficitComments = (json.deficitTasks || []).map((d: any, _idx: number) => ({
+            comment: `Deficit ${d.taskId}: ${Number(d.deficitHours || 0).toFixed(2)}h`,
+            startTime: startTime, // Anchor comment to start of plan
+            type: 'comment' as const
+        }));
+
+        const workers = json.workers || [];
+        const workerNameMap = new Map(workers.map((w: any) => [w.workerId, w.name || w.workerId]));
+
+        const assignmentsWithNames = assignments.map((a: any) => ({
+            ...a,
+            workerName: workerNameMap.get(a.workerId) || a.workerId
+        }));
+
+        const idleWithNames = idle.map((a: any) => ({
+            ...a,
+            workerName: workerNameMap.get(a.workerId) || a.workerId
+        }));
+
+        return {
+            version: 'multi-shift-v2',
+            planId: json.planId || 'simulation',
+            assignments: [...assignmentsWithNames, ...idleWithNames, ...deficitComments],
+            items: assignmentsWithNames,
+            idleWorkers: idleWithNames,
+            deficitTasks: json.deficitTasks,
+            rawMultiShift: json,
+            tasks,
+            workers
+        };
+    };
+
+    const runPlanFile = async (file: File, shiftLength: number = 10) => {
         setLoading(true);
         setError(null);
         try {
             const formData = new FormData();
             formData.append('file', file);
-
-            // Calculate dynamic date and end time based on shift length
             const planDate = getDynamicDate();
             const startHour = 7;
             const endHour = startHour + shiftLength;
             const startTime = `${planDate}T${startHour.toString().padStart(2, '0')}:00:00Z`;
             const endTime = `${planDate}T${endHour.toString().padStart(2, '0')}:00:00Z`;
-
             formData.append('startTime', startTime);
             formData.append('endTime', endTime);
 
@@ -146,6 +203,36 @@ export function usePlanData(): UsePlanDataResult {
         } catch (err: any) {
             console.error(err);
             setError(err.message || "Unknown error occurred");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const runSimulation = async () => {
+        setLoading(true);
+        setError(null);
+        console.log("Triggering Simulation via API...");
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/v1/schedule/simulate`, {
+                method: 'POST'
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || res.statusText);
+            }
+
+            const json = await res.json();
+            console.log("Simulation Result:", json);
+            // Simulation returns a MultiShiftPlanResponse.
+            // We use current time or the plan's start time for UI anchoring
+            const startTime = json.shift1Summary?.shiftId ? new Date().toISOString() : getDynamicDate() + 'T07:00:00Z';
+
+            const processed = processMultiShiftResponse(json, startTime);
+            setData(processed);
+        } catch (err: any) {
+            console.error("Simulation Error:", err);
+            setError(err.message || "Simulation failed");
         } finally {
             setLoading(false);
         }
@@ -224,61 +311,8 @@ export function usePlanData(): UsePlanDataResult {
             }
 
             const json: any = await res.json();
-            const tasks = json.tasks || [];
-            const taskNameMap = new Map(tasks.map((t: any) => [t.taskId, t.name]));
-            const rawAssignments = (json.assignments || []).map((a: any) => ({
-                workerId: a.workerId,
-                taskId: a.taskId,
-                taskName: taskNameMap.get(a.taskId) || a.taskId,
-                startTime: a.startDate || a.startTime,
-                endTime: a.endDate || a.endTime,
-                type: 'assignment' as const,
-                isWaitTask: a.isWaitTask
-            }));
-            const rawIdle = (json.idleWorkers || []).map((a: any, idx: number) => ({
-                workerId: a.workerId,
-                taskId: a.taskId || `idle_${idx}`,
-                taskName: 'IDLE',
-                startTime: a.startDate || a.startTime,
-                endTime: a.endDate || a.endTime,
-                type: 'assignment' as const
-            }));
-
-            const assignments = consolidateAssignments(rawAssignments);
-            const idle = consolidateAssignments(rawIdle);
-            const deficitComments = (json.deficitTasks || []).map((d: any, _idx: number) => ({
-                comment: `Deficit ${d.taskId}: ${Number(d.deficitHours || 0).toFixed(2)}h`,
-                startTime: options.startTime,
-                type: 'comment' as const
-            }));
-
-            // Create worker name map and include workerName in assignments
-            const workers = json.workers || [];
-            const workerNameMap = new Map(workers.map((w: any) => [w.workerId, w.name || w.workerId]));
-
-            // Add workerName to all assignments
-            const assignmentsWithNames = assignments.map((a: any) => ({
-                ...a,
-                workerName: workerNameMap.get(a.workerId) || a.workerId
-            }));
-            const idleWithNames = idle.map((a: any) => ({
-                ...a,
-                workerName: workerNameMap.get(a.workerId) || a.workerId
-            }));
-
-            const planResponse: PlanResponse = {
-                version: json.version || 'multi-shift-file',
-                planId: json.planId,
-                assignments: [...assignmentsWithNames, ...idleWithNames, ...deficitComments],
-                items: assignmentsWithNames,
-                idleWorkers: idleWithNames,
-                deficitTasks: json.deficitTasks,
-                rawMultiShift: json,
-                tasks,
-                workers  // Pass workers through
-            };
-
-            setData(planResponse);
+            const processed = processMultiShiftResponse(json, options.startTime);
+            setData(processed);
         } catch (err: any) {
             console.error(err);
             setError(err.message || "Unknown error occurred");
@@ -349,7 +383,7 @@ export function usePlanData(): UsePlanDataResult {
                 isWaitTask: a.isWaitTask
             }));
 
-        const rawMap = new Map(rawAssignments.map((a: any) => [makeKey(a), { ...a }]));
+        const rawMap = new Map<string, any>(rawAssignments.map((a: any) => [makeKey(a), { ...a }]));
 
         // Removed
         diff.removedWorkerTasks.forEach(r => {
@@ -359,8 +393,8 @@ export function usePlanData(): UsePlanDataResult {
                 rawMap.delete(exactKey);
             } else {
                 // Fuzzy match: Same worker/task, start time within 1000ms
-                const rStart = new Date(r.startDate).getTime();
-                const rEnd = new Date(r.endDate).getTime();
+                const rStart = new Date(r.startDate || '').getTime();
+                const rEnd = new Date(r.endDate || '').getTime();
                 for (const [key, val] of rawMap.entries()) {
                     const isSameWorker = val.workerId === rWorkerId ||
                         (normalizeWorkerId(val.workerId) === null && rWorkerId === null);
@@ -386,7 +420,7 @@ export function usePlanData(): UsePlanDataResult {
 
             // Try fuzzy match for update as well
             if (!existing) {
-                const uStart = new Date(u.startDate).getTime();
+                const uStart = new Date(u.startDate || '').getTime();
                 for (const [k, val] of rawMap.entries()) {
                     if (val.workerId === uWorkerId && val.taskId === u.taskId && val.startDate) {
                         const valStart = new Date(val.startDate).getTime();
@@ -416,10 +450,6 @@ export function usePlanData(): UsePlanDataResult {
             if (existing) {
                 existing.startDate = u.startDate;
                 existing.endDate = u.endDate;
-                // Update key if start time changed significantly? 
-                // Technically we should re-key, but we rebuild the list anyway.
-                // But for subsequent lookups in this loop it matters.
-                // However, diffs usually don't verify against themselves.
             }
         });
 
@@ -599,5 +629,5 @@ export function usePlanData(): UsePlanDataResult {
         }
     };
 
-    return { data, loading, error, runSimulation, exportResults, runMultiShift, exportMultiShift, adjustPlan };
+    return { data, loading, error, runSimulation, runPlanFile, exportResults, runMultiShift, exportMultiShift, adjustPlan };
 }

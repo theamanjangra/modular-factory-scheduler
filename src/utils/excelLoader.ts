@@ -19,9 +19,19 @@ export function parseExcelData(buffer: Buffer): ParsedData {
         const aoa = XLSX.utils.sheet_to_json(workersSheet, { header: 1, range: 0 }) as any[][];
 
         let headerRowIndex = -1;
+        let hasNameCol = false;
+        let hasFirstLastCol = false;
+
         for (let i = 0; i < aoa.length; i++) {
-            if (aoa[i] && aoa[i].includes('Name')) {
+            const rowStr = (aoa[i] || []).map(c => String(c).trim().toLowerCase());
+            if (rowStr.includes('name')) {
                 headerRowIndex = i;
+                hasNameCol = true;
+                break;
+            }
+            if (rowStr.includes('first name') && rowStr.includes('last name')) {
+                headerRowIndex = i;
+                hasFirstLastCol = true;
                 break;
             }
         }
@@ -30,7 +40,20 @@ export function parseExcelData(buffer: Buffer): ParsedData {
             const rows: any[] = XLSX.utils.sheet_to_json(workersSheet, { range: headerRowIndex });
 
             rows.forEach((row, index) => {
-                const name = row['Name'];
+                let name = '';
+                if (hasNameCol) {
+                    name = row['Name'];
+                } else if (hasFirstLastCol) {
+                    // Handle variations like "First Name" vs "First Name "
+                    const fKey = Object.keys(row).find(k => k.trim().toLowerCase() === 'first name');
+                    const lKey = Object.keys(row).find(k => k.trim().toLowerCase() === 'last name');
+                    const f = fKey ? row[fKey] : '';
+                    const l = lKey ? row[lKey] : '';
+                    if (f || l) {
+                        name = `${f || ''} ${l || ''}`.trim();
+                    }
+                }
+
                 if (!name) return;
 
                 const preferences: Record<string, number> = {};
@@ -40,7 +63,8 @@ export function parseExcelData(buffer: Buffer): ParsedData {
                     : (shiftPreferenceRaw || '').toString().trim();
 
                 Object.keys(row).forEach(key => {
-                    if (key !== 'Name' && key !== 'RankedSkills' && key !== 'Skills') {
+                    const kLower = key.toLowerCase();
+                    if (key !== 'Name' && !kLower.includes('first name') && !kLower.includes('last name') && key !== 'RankedSkills' && key !== 'Skills') {
                         const val = parseInt(row[key]);
                         if (!isNaN(val)) {
                             preferences[key] = val;

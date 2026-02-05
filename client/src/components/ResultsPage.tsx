@@ -44,7 +44,7 @@ const getShiftDates = () => {
 };
 
 export const ResultsPage = () => {
-    const { data, loading, error, runMultiShift, exportMultiShift, adjustPlan } = usePlanData();
+    const { data, loading, error, runMultiShift, exportMultiShift, adjustPlan, runSimulation } = usePlanData();
     const [shift1Start, setShift1Start] = useState('07:00');
     const [shift1End, setShift1End] = useState('13:00');
     const [useShift2, setUseShift2] = useState(true);
@@ -304,6 +304,15 @@ export const ResultsPage = () => {
                     >
                         {loading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} fill="white" />}
                         Run Planning
+                    </button>
+
+                    <button
+                        onClick={() => runSimulation()}
+                        disabled={loading}
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-indigo-700/10 active:scale-95"
+                    >
+                        {loading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} fill="white" />}
+                        Simulate (Demo)
                     </button>
 
                     <button

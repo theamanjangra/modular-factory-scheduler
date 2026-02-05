@@ -38,8 +38,8 @@ export class MultiShiftPlanningService {
         if (typeof shift1Rate !== 'number') {
             throw new MultiShiftValidationError('shift1.productionRate is required.');
         }
-        if (shift1Rate <= 0.5 || shift1Rate > 1.0) {
-            throw new MultiShiftValidationError('shift1.productionRate must be > 0.5 and <= 1.0.');
+        if (shift1Rate <= 0.0 || shift1Rate > 1.0) {
+            throw new MultiShiftValidationError('shift1.productionRate must be > 0.0 and <= 1.0.');
         }
 
         const shift2Rate = 1.0 - shift1Rate;

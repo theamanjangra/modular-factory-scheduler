@@ -174,4 +174,3 @@ export const MasterDataSelectors: React.FC<MasterDataSelectorsProps> = ({ onSele
         </div>
     );
 };
-

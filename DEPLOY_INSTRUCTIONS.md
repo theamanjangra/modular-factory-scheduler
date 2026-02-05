@@ -1,43 +1,60 @@
+# ☁️ Vederra Scheduler Deployment Guide
 
-# ☁️ How to Run Vederra Scheduler on Google Cloud
+This guide explains how to update your live application (`vederra-scheduler.web.app`) from your local VS Code.
 
-This application is configured to run as a **single service** (Node.js + React). The Node.js backend serves the React frontend static files.
+**Live URL:** [https://vederra-scheduler.web.app](https://vederra-scheduler.web.app)
 
-## 1. Get the Code
-In your Google Cloud Shell (or VM):
-```bash
-git pull origin main
-```
+---
 
-## 2. Install & Build
-Run this single command to install dependencies and build both the Backend and Frontend:
-```bash
-npm install && npm run gcp-build
-```
-*(This command installs root deps, generates Prisma client, installs client deps, and builds the React app)*
+## 🚀 How to Update
 
-## 3. Configure Environment
-You need to set up the environment variables.
-1. Copy the example file:
-   ```bash
-   cp client/.env.example client/.env
-   ```
-2. Edit `client/.env` and add your **Firebase Config** (from Firebase Console > Project Settings):
-   ```
-   VITE_FIREBASE_API_KEY=...
-   VITE_FIREBASE_PROJECT_ID=vederra-scheduler
-   ...
-   ```
-3. (Optional) Create a root `.env` for backend secrets if needed (e.g. Database URL, though Data Connect handles the main data now).
+Changes made on your laptop **do not** go live automatically. You must deploy them.
 
-## 4. Run the App
-Start the server in production mode:
-```bash
-npm start
-```
-* The server will start on port `3000` (or `$PORT`).
-* Access the app by clicking **"Web Preview"** in Cloud Shell, or going to your VM's IP on port 3000.
+### 1. Update the Frontend (Visuals / React)
+If you changed `.tsx` files, CSS, or client logic:
 
-## 5. Verify
-* The React App should load.
-* The "Shift", "Department" dropdowns should be fetching data directly from Firebase Data Connect!
+1.  **Build** (Local):
+    ```powershell
+    cmd /c "set VITE_API_URL=https://vederra-backend-299018577273.us-central1.run.app && npm run build --prefix client"
+    ```
+2.  **Deploy** (Push to Google):
+    ```powershell
+    cmd /c "firebase deploy --only hosting"
+    ```
+
+### 2. Update the Backend (API / Logic)
+If you changed `src/routes`, `src/services`, `prisma/schema.prisma` or other `ts` files in the root:
+
+1.  **Deploy** (Build & Push):
+    ```powershell
+    cmd /c "gcloud run deploy vederra-backend --image gcr.io/vederra-scheduler/vederra-backend --source ."
+    ```
+    *(Note: You just need `--source .` usually, `gcloud` handles the build unless it fails, then use the longer build command)*
+
+    **Better Command (Re-build + Deploy):**
+    ```powershell
+    cmd /c "gcloud builds submit --tag gcr.io/vederra-scheduler/vederra-backend . && gcloud run deploy vederra-backend --image gcr.io/vederra-scheduler/vederra-backend"
+    ```
+
+### 3. Update the Database (Data Connect)
+If you changed `schema.gql`:
+
+1.  **Deploy Schema:**
+    ```powershell
+    cmd /c "firebase deploy --only dataconnect"
+    ```
+    *(Remember to clean `dataconnect-generated` if you hit the permission error again)*
+
+---
+
+## 🛠️ Configuration Reference
+
+### Backend (Cloud Run)
+- **Service Name:** `vederra-backend`
+- **Region:** `us-central1`
+- **Database:** Connects via Unix Socket to `vederra-scheduler-2-instance`
+- **Env Vars:** `DATABASE_URL` (Set via `gcloud run services update`)
+
+### Frontend (Firebase Hosting)
+- **Hosting Target:** `vederra-scheduler`
+- **API URL:** `https://vederra-backend-299018577273.us-central1.run.app` (Injected into `.env` at build time)

@@ -1,3 +1,4 @@
+
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -13,9 +14,10 @@ export type ShiftInfo = {
 
 export const getShiftById = async (shiftId: string): Promise<ShiftInfo | null> => {
     try {
-        const shift = await prisma.shift.findUnique({
-            where: { id: shiftId }
-        });
+        // const shift = await prisma.shift.findUnique({
+        //     where: { id: shiftId }
+        // });
+        const shift: any = null; // MOCK FORCE NULL
 
         if (shift && shift.startTime && shift.endTime) {
             return {
@@ -38,9 +40,10 @@ export const getShiftById = async (shiftId: string): Promise<ShiftInfo | null> =
 
 export const getWorkersNameWithShiftId = async (shiftId: string) => {
     try {
-        const workers = await prisma.worker.findMany({
-            where: shiftId ? { shiftId } : undefined
-        });
+        // const workers = await prisma.worker.findMany({
+        //     where: shiftId ? { shiftId } : undefined
+        // });
+        const workers: any[] = []; // MOCK FORCE EMPTY
 
         return {
             workers: workers.map((w) => ({

@@ -7,62 +7,8 @@ import {
 } from '../utils/timezone';
 
 // Types
-interface Task {
-    taskId: string;
-    name?: string;
-    estimatedRemainingLaborHours?: number;
-    estimatedTotalLaborHours?: number;
-}
+import type { AdjustmentResult, Task, Worker, TaskUpdate } from '../types';
 
-interface Worker {
-    workerId: string;
-    name?: string;
-}
-
-interface TaskUpdate {
-    id: string;
-    taskId: string;
-    laborHoursRemaining: number;
-}
-
-interface AdjustmentResult {
-    version: string;
-    addedWorkerTasks: Array<{
-        workerId: string;
-        taskId: string;
-        startDate: string;
-        endDate: string;
-    }>;
-    removedWorkerTasks: Array<{
-        workerId: string;
-        taskId: string;
-        startDate: string;
-        endDate: string;
-    }>;
-    updatedWorkerTasks: Array<{
-        workerId: string;
-        taskId: string;
-        startDate: string;
-        endDate: string;
-        previousEndDate: string;
-    }>;
-    impactedTasks: Array<{
-        taskId: string;
-        taskName?: string;
-        status: 'EXTENDED' | 'SHORTENED' | 'REASSIGNED' | 'UNAFFECTED';
-        newEndDate?: string;
-        previousEndDate?: string;
-    }>;
-    deficitTasks?: Array<{
-        taskId: string;
-        deficitHours: number;
-    }>;
-    idleWorkers?: Array<{
-        workerId: string;
-        workerName?: string;
-        availableFrom: string;
-    }>;
-}
 
 interface ShiftWindow {
     date: string;        // YYYY-MM-DD
@@ -938,13 +884,13 @@ export const PlanAdjustmentPanel: React.FC<PlanAdjustmentPanelProps> = ({
                                         {expandedSections.has('added') && (
                                             <div className="space-y-1 max-h-48 overflow-y-auto">
                                                 {result.addedWorkerTasks.map((a, i) => {
-                                                    const worker = workerMap.get(a.workerId);
+                                                    const worker = a.workerId ? workerMap.get(a.workerId) : undefined;
                                                     const task = taskMap.get(a.taskId);
                                                     const isWait = !a.workerId || a.workerId === '__WAIT__' || a.workerId === 'null';
                                                     const workerDisplay = isWait ? 'Non-Labor (Wait)' : (worker?.name || a.workerId);
                                                     return (
                                                         <div key={i} className="text-xs text-green-900 font-mono">
-                                                            {workerDisplay} → {task?.name || a.taskId} | {formatDateTime(a.startDate)} - {formatDateTime(a.endDate)}
+                                                            {workerDisplay} → {task?.name || a.taskId} | {formatDateTime(a.startDate || '')} - {formatDateTime(a.endDate || '')}
                                                         </div>
                                                     );
                                                 })}
@@ -966,13 +912,13 @@ export const PlanAdjustmentPanel: React.FC<PlanAdjustmentPanelProps> = ({
                                         {expandedSections.has('removed') && (
                                             <div className="space-y-1 max-h-48 overflow-y-auto">
                                                 {result.removedWorkerTasks.map((r, i) => {
-                                                    const worker = workerMap.get(r.workerId);
+                                                    const worker = r.workerId ? workerMap.get(r.workerId) : undefined;
                                                     const task = taskMap.get(r.taskId);
                                                     const isWait = !r.workerId || r.workerId === '__WAIT__' || r.workerId === 'null';
                                                     const workerDisplay = isWait ? 'Non-Labor (Wait)' : (worker?.name || r.workerId);
                                                     return (
                                                         <div key={i} className="text-xs text-red-900 font-mono line-through opacity-70">
-                                                            {workerDisplay} → {task?.name || r.taskId} | {formatDateTime(r.startDate)} - {formatDateTime(r.endDate)}
+                                                            {workerDisplay} → {task?.name || r.taskId} | {formatDateTime(r.startDate || '')} - {formatDateTime(r.endDate || '')}
                                                         </div>
                                                     );
                                                 })}
@@ -994,13 +940,13 @@ export const PlanAdjustmentPanel: React.FC<PlanAdjustmentPanelProps> = ({
                                         {expandedSections.has('updated') && (
                                             <div className="space-y-1 max-h-48 overflow-y-auto">
                                                 {result.updatedWorkerTasks.map((u, i) => {
-                                                    const worker = workerMap.get(u.workerId);
+                                                    const worker = u.workerId ? workerMap.get(u.workerId) : undefined;
                                                     const task = taskMap.get(u.taskId);
                                                     const isWait = !u.workerId || u.workerId === '__WAIT__' || u.workerId === 'null';
                                                     const workerDisplay = isWait ? 'Non-Labor (Wait)' : (worker?.name || u.workerId);
                                                     return (
                                                         <div key={i} className="text-xs text-yellow-900 font-mono">
-                                                            {workerDisplay} → {task?.name || u.taskId} | end: {formatDateTime(u.previousEndDate)} → {formatDateTime(u.endDate)}
+                                                            {workerDisplay} → {task?.name || u.taskId} | end: {formatDateTime(u.previousEndDate || '')} → {formatDateTime(u.endDate || '')}
                                                         </div>
                                                     );
                                                 })}
