@@ -29,7 +29,7 @@ export class PlanningService {
     public plan(request: PlanRequest & { planId?: string }, options?: {
         reassignmentPenalty?: number;
         seedAssignments?: WorkerTask[];
-    }): any[] {
+    }): any[] & { _plannerDiag?: any } {
         console.log('--- START PLANNING ---');
         const { workers, tasks, interval, useHistorical, workBudgetHours, planId } = request as any;
         const scheduling = resolveSchedulingConfig(request.scheduling);
@@ -57,6 +57,7 @@ export class PlanningService {
                     t.estimatedTotalLaborHours = useHistorical ? base * 0.9 : base;
                 }
             }
+
             if (t.estimatedRemainingLaborHours === undefined) {
                 t.estimatedRemainingLaborHours = t.estimatedTotalLaborHours;
             }
@@ -79,18 +80,39 @@ export class PlanningService {
         const resourceManager = new ResourceManager(scheduling.transitionGapMs); // New Source of Truth
 
         // --- SEED ASSIGNMENTS FOR STABILITY ---
-        if (options?.seedAssignments) {
-            console.log(`Seeding ${options.seedAssignments.length} previous assignments`);
-            options.seedAssignments.forEach(a => resourceManager.addAssignment(a));
+        // Seeds go into ResourceManager for worker-booking (prevents double-booking),
+        // but we track them separately so we DON'T count their hours again in
+        // progress tracking — the remaining hours already reflect their work.
+        const seedAssignmentSet = new Set<WorkerTask>(options?.seedAssignments || []);
+        if (seedAssignmentSet.size > 0) {
+            console.log(`Seeding ${seedAssignmentSet.size} previous assignments`);
+            seedAssignmentSet.forEach(a => resourceManager.addAssignment(a));
         }
 
         const rawSteps: any[] = [];
         const stepMs = scheduling.timeStepMinutes * 60 * 1000;
         let currentTime = startTimeVals;
         const lastAssignedTask = new Map<string, string>();
+        const workerLocks = new Map<string, string>(); // Persistent worker→task locks (survive seed gaps)
         let remainingBudgetMs = typeof workBudgetHours === 'number'
             ? Math.max(0, Math.floor((workBudgetHours * 60 * 60 * 1000) / stepMs) * stepMs)
             : undefined;
+
+        // Diagnostics tracking
+        const _plannerDiag: any = {
+            workBudgetHours,
+            initialBudgetMs: remainingBudgetMs,
+            shiftDurationMs: endTimeVals - startTimeVals,
+            stepMs,
+            totalStepsExecuted: 0,
+            assignmentSteps: 0,
+            emptySteps: 0,
+            breakReason: null as string | null,
+            budgetAfterFirstStep: null as number | null,
+            workersPerStep: [] as number[],
+            availableWorkersFirstStep: null as number | null,
+        };
+        console.log(`[Diag] workBudgetHours=${workBudgetHours}, initialBudgetMs=${remainingBudgetMs}, shiftDurationMs=${endTimeVals - startTimeVals}`);
 
         // 2b. Pre-calculate Reverse Dependencies (How many tasks depend on me?)
         const dependentCounts = new Map<string, number>();
@@ -143,15 +165,35 @@ export class PlanningService {
             let currentTime = phaseStart;
             while (currentTime < phase.endTime) {
                 if (this.allTasksComplete(state)) {
+                    _plannerDiag.breakReason = _plannerDiag.breakReason || `allTasksComplete in ${phase.name}`;
                     break;
                 }
                 if (currentTime >= endTimeVals) {
+                    _plannerDiag.breakReason = _plannerDiag.breakReason || `currentTime >= endTimeVals`;
                     break;
                 }
 
                 const stepStart = new Date(currentTime).toISOString();
                 const stepEndTs = currentTime + stepMs;
                 const stepEnd = new Date(stepEndTs).toISOString();
+
+                // Pre-balance completion check: mark tasks complete at block boundaries
+                // BEFORE getReadyTasks so dependents are immediately available for assignment.
+                // This prevents workers from being grabbed by lower-priority cross-dept tasks
+                // while their primaryJob task is about to unlock.
+                state.tasks.forEach((tState, taskId) => {
+                    if (tState.isComplete) return;
+                    if (tState.remainingHours <= this.COMPLETION_EPSILON_HOURS) {
+                        const allTaskBlocks = resourceManager.getAllAssignments()
+                            .filter(a => a.taskId === taskId && !seedAssignmentSet.has(a));
+                        const latestBlockEnd = allTaskBlocks.reduce(
+                            (max, a) => Math.max(max, new Date(a.endDate).getTime()), 0
+                        );
+                        if (latestBlockEnd === 0 || currentTime >= latestBlockEnd) {
+                            tState.isComplete = true;
+                        }
+                    }
+                });
 
                 // A. Identify Ready Tasks
                 const readyTasks = this.getReadyTasks(state, currentTime, planId);
@@ -257,12 +299,13 @@ export class PlanningService {
 
                 // C. Prioritize Tasks based on Phase Strategy
                 // Strategy: CRITICAL_PATH_FOCUS -> Sort by CriticalPathScore DESC
-                // FIX: Deduct "committed future work" from remainingHours
+                // FIX: Deduct "committed future work" from remainingHours and check if task is currently active
                 const prioritizedTasks = laborTasks.map(item => {
                     // Calculate work already scheduled for this task that extends past currentTime
                     // This represents workers who are ALREADY assigned and will contribute work
                     const allAssignments = resourceManager.getAllAssignments().filter(a => a.taskId === item.task.taskId);
                     let committedFutureWork = 0;
+
                     for (const a of allAssignments) {
                         const aStart = new Date(a.startDate).getTime();
                         const aEnd = new Date(a.endDate).getTime();
@@ -280,6 +323,7 @@ export class PlanningService {
 
                     return {
                         ...item,
+                        rawRemainingHours: item.remainingHours,
                         remainingHours: effectiveRemaining, // OVERRIDE with adjusted value
                         dependentCount: dependentCounts.get(item.task.taskId) || 0,
                         criticalPathScore: state.tasks.get(item.task.taskId)?.criticalPathScore || 0
@@ -288,7 +332,7 @@ export class PlanningService {
 
                 // Sort
                 prioritizedTasks.sort((a, b) => {
-                    // V2 Logic: Critical Path Score (High) > Completion Urgency > Dependent Count > Remaining
+                    // V3 Logic: Active Continuity > Critical Path Score (High) > Completion Urgency > Dependent Count > Remaining
 
                     if (phase.strategy === "CRITICAL_PATH_FOCUS") {
                         // Weighted Sort: CP Score is dominant
@@ -319,8 +363,22 @@ export class PlanningService {
                 });
 
                 // D. Balance
+
+                // Release locks for completed tasks before balance runs
+                for (const [wId, tId] of workerLocks) {
+                    const tState = state.tasks.get(tId);
+                    if (!tState || tState.isComplete || tState.remainingHours <= this.COMPLETION_EPSILON_HOURS) {
+                        workerLocks.delete(wId);
+                    }
+                }
+
+                _plannerDiag.totalStepsExecuted++;
+                if (_plannerDiag.availableWorkersFirstStep === null) {
+                    _plannerDiag.availableWorkersFirstStep = shiftAvailableWorkers.length;
+                }
                 let assignment: { results: WorkerTask[]; taskProgress: Map<string, number>; budgetUsedMs?: number } = { results: [], taskProgress: new Map<string, number>(), budgetUsedMs: 0 };
                 if (remainingBudgetMs !== undefined && remainingBudgetMs < stepMs) {
+                    if (!_plannerDiag.breakReason) _plannerDiag.breakReason = `budget exhausted at step ${_plannerDiag.totalStepsExecuted} (remainingBudgetMs=${remainingBudgetMs}, stepMs=${stepMs})`;
                     remainingBudgetMs = 0;
                 }
                 if (remainingBudgetMs === undefined || remainingBudgetMs > 0) {
@@ -335,12 +393,17 @@ export class PlanningService {
                         {
                             reassignmentPenalty: options?.reassignmentPenalty,
                             minAssignmentMinutes: scheduling.minAssignmentMinutes,
-                            interruptionConstraints  // KAN-468: Pass interruption limits
-                        } // Pass Penalty + Scheduling
+                            interruptionConstraints,  // KAN-468: Pass interruption limits
+                            enforceDepartmentMatch: request.enforceDepartmentMatch,
+                            useCrewCap: request.useCrewCap,
+                            preventLateJoiners: (request as any).preventLateJoiners,
+                            keepCrewTogether: (request as any).keepCrewTogether,
+                            workerLocks
+                        }
                     );
                 }
 
-                // E. Record Results
+                // E. Record Results & Update Worker Locks
                 assignment.results.forEach(res => {
                     const tState = state.tasks.get(res.taskId!);
                     rawSteps.push({
@@ -352,9 +415,25 @@ export class PlanningService {
                         taskName: tState?.task.name,
                         // Optionally add comment to assignment if interesting?
                     });
+                    // Lock worker to this task until it completes
+                    if (res.workerId && res.taskId) {
+                        workerLocks.set(res.workerId, res.taskId);
+                    }
                 });
                 if (remainingBudgetMs !== undefined) {
                     remainingBudgetMs = Math.max(0, remainingBudgetMs - (assignment.budgetUsedMs || 0));
+                }
+                if (assignment.results.length > 0) {
+                    _plannerDiag.assignmentSteps++;
+                } else {
+                    _plannerDiag.emptySteps++;
+                }
+                if (_plannerDiag.budgetAfterFirstStep === null && _plannerDiag.totalStepsExecuted === 1) {
+                    _plannerDiag.budgetAfterFirstStep = remainingBudgetMs ?? null;
+                }
+                // Track workers assigned per step (first 10 steps only to limit size)
+                if (_plannerDiag.totalStepsExecuted <= 10) {
+                    _plannerDiag.workersPerStep.push(assignment.results.length);
                 }
 
                 // F. Update Progress (Using ACTUAL assignment durations, not step duration)
@@ -365,8 +444,11 @@ export class PlanningService {
                     if (tState.isComplete) return;
 
                     // Get all assignments for this task that overlap with the current step
+                    // IMPORTANT: Exclude seed assignments — their work is already reflected
+                    // in the task's remainingHours. Counting them again would double-deduct.
                     const taskAssignments = resourceManager.getAssignmentsByTime(stepStartMs, stepEndMs)
-                        .filter(a => a.taskId === taskId);
+                        .filter(a => a.taskId === taskId)
+                        .filter(a => !seedAssignmentSet.has(a));
 
                     if (taskAssignments.length > 0) {
                         // Calculate actual hours done by summing overlap durations
@@ -386,11 +468,96 @@ export class PlanningService {
                         tState.remainingHours -= hoursDone;
 
                         if (tState.remainingHours <= this.COMPLETION_EPSILON_HOURS) {
-                            tState.isComplete = true;
                             tState.remainingHours = 0;
                         }
                     }
+
+                    // Block-boundary completion check — runs EVERY step for tasks with zero remaining.
+                    // Must be OUTSIDE the taskAssignments block because getAssignmentsByTime uses
+                    // strict overlap (start < aEnd), so at the exact step when currentTime == blockEnd
+                    // the assignment is no longer returned. Without this, the task gets stuck at
+                    // remainingHours=0 / isComplete=false permanently.
+                    if (tState.remainingHours <= this.COMPLETION_EPSILON_HOURS && !tState.isComplete) {
+                        const allTaskBlocks = resourceManager.getAllAssignments()
+                            .filter(a => a.taskId === taskId && !seedAssignmentSet.has(a));
+                        const latestBlockEnd = allTaskBlocks.reduce(
+                            (max, a) => Math.max(max, new Date(a.endDate).getTime()), 0
+                        );
+
+                        if (latestBlockEnd === 0 || currentTime >= latestBlockEnd) {
+                            tState.isComplete = true;
+                        }
+                    }
                 });
+
+                // F2. Prerequisite-Chain Catch-Up Pass
+                // When progress tracking (F) marks a task complete, its dependents become
+                // ready for the first time. Without this pass, those dependents wouldn't
+                // start until the NEXT step (5-min gap). This runs an extra balance call
+                // for only the newly-unblocked tasks so freed workers can start immediately.
+                const newlyReadyTasks = this.getReadyTasks(state, currentTime, planId)
+                    .filter(item => !this.isNonWorkerTask(item.task))
+                    .filter(item => !laborTasks.some(lt => lt.task.taskId === item.task.taskId));
+
+                if (newlyReadyTasks.length > 0 && (remainingBudgetMs === undefined || remainingBudgetMs > 0)) {
+                    const newPrioritized = newlyReadyTasks.map(item => {
+                        const allAssignments = resourceManager.getAllAssignments().filter(a => a.taskId === item.task.taskId);
+                        let committedFutureWork = 0;
+                        for (const a of allAssignments) {
+                            const aEnd = new Date(a.endDate).getTime();
+                            if (aEnd > currentTime) {
+                                const futureStart = Math.max(currentTime, new Date(a.startDate).getTime());
+                                committedFutureWork += (aEnd - futureStart) / (1000 * 60 * 60);
+                            }
+                        }
+                        return {
+                            ...item,
+                            rawRemainingHours: item.remainingHours,
+                            remainingHours: Math.max(0, item.remainingHours - committedFutureWork),
+                            dependentCount: dependentCounts.get(item.task.taskId) || 0,
+                            criticalPathScore: state.tasks.get(item.task.taskId)?.criticalPathScore || 0
+                        };
+                    });
+
+                    const catchUpAssignment = this.balancingService.balance(
+                        currentTime,
+                        stepMs,
+                        shiftAvailableWorkers,
+                        newPrioritized,
+                        resourceManager,
+                        endTimeVals,
+                        remainingBudgetMs,
+                        {
+                            reassignmentPenalty: options?.reassignmentPenalty,
+                            minAssignmentMinutes: scheduling.minAssignmentMinutes,
+                            interruptionConstraints,
+                            enforceDepartmentMatch: request.enforceDepartmentMatch,
+                            useCrewCap: request.useCrewCap,
+                            preventLateJoiners: (request as any).preventLateJoiners,
+                            keepCrewTogether: (request as any).keepCrewTogether,
+                            workerLocks
+                        }
+                    );
+
+                    catchUpAssignment.results.forEach(res => {
+                        const tState = state.tasks.get(res.taskId!);
+                        rawSteps.push({
+                            startDate: res.startDate,
+                            endDate: res.endDate,
+                            type: 'assignment',
+                            workerId: res.workerId,
+                            taskId: res.taskId,
+                            taskName: tState?.task.name,
+                        });
+                        // Lock worker to this task
+                        if (res.workerId && res.taskId) {
+                            workerLocks.set(res.workerId, res.taskId);
+                        }
+                    });
+                    if (remainingBudgetMs !== undefined) {
+                        remainingBudgetMs = Math.max(0, remainingBudgetMs - (catchUpAssignment.budgetUsedMs || 0));
+                    }
+                }
 
                 // G. Record Idle/Unassigned (Optional for V2 Story, but good for debug)
                 // Skipping "worker_idle" spam to keep narrative clean? 
@@ -413,7 +580,19 @@ export class PlanningService {
             }
         }
 
+
+        // Build task priority list sorted by critical path score
+        _plannerDiag.taskPriority = Array.from(state.tasks.entries()).map(([taskId, tState]) => ({
+            taskId,
+            name: tState.task.name,
+            criticalPathScore: tState.criticalPathScore,
+            dependentCount: dependentCounts.get(taskId) || 0,
+            totalHours: tState.task.estimatedTotalLaborHours || 0,
+            prerequisiteIds: tState.task.prerequisiteTaskIds || []
+        })).sort((a, b) => b.criticalPathScore - a.criticalPathScore);
         console.log(`--- PLANNING COMPLETE: Generated ${rawSteps.length} steps ---`);
+        console.log(`[Diag] ${JSON.stringify(_plannerDiag)}`);
+        (rawSteps as any)._plannerDiag = _plannerDiag;
         return rawSteps;
     }
 

@@ -47,7 +47,7 @@ export class SchedulingController {
     public runSimulation = async (req: Request, res: Response) => {
         try {
             console.log("[SchedulingController] Triggering Simulation...");
-            const result = await this.adapterService.simulateFromDB();
+            const result = await this.adapterService.simulateFromDB(req.body);
             res.status(200).json(result);
         } catch (error) {
             console.error("[SchedulingController] Simulation failed:", error);
@@ -56,5 +56,9 @@ export class SchedulingController {
                 details: error instanceof Error ? error.message : "Unknown error"
             });
         }
+    };
+
+    public checkDb = async (req: Request, res: Response) => {
+        res.status(200).json({ status: "alive", timestamp: new Date() });
     };
 }

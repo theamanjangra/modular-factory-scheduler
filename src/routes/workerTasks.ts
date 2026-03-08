@@ -14,6 +14,7 @@ router.post('/plan-file-multishift', upload.single('file'), controller.planMulti
 router.post('/plan-file-multishift-shiftids', upload.single('file'), controller.planMultiShiftFromFileWithShiftIds);
 router.post('/plan-file-multishift-export', upload.single('file'), controller.exportMultiShiftFromFile);
 router.post('/calculate-schedule', controller.multiShiftPlan);
+router.post('/production-plan/preview', controller.getProductionPlanPreview); // NEW: Preview Endpoint (POST for mixed mode)
 router.get('/debug/shift', controller.debugShiftWindow);
 
 // KAN-383: Skill-based matching endpoint (for iOS app)
@@ -33,6 +34,10 @@ router.get('/:planId/interruptions', controller.getInterruptions);
 // ========================================
 router.post('/debug/time-override', controller.setTimeOverride);
 router.get('/debug/time-override', controller.getTimeOverride);
+
+
+// Temporary Data Viz
+router.get('/data-viz', controller.getDataViz);
 
 export default router;
 

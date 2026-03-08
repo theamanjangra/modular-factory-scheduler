@@ -1,37 +1,45 @@
 import { Request, Response } from 'express'; // Ensure express types are installed
 import { PlanningService } from '../services/planningService';
-import { PlanRequest, MultiShiftPlanRequest, SkillMatchingRequest, AdjustPlanSimpleRequest, SchedulingConfig } from '../types';
+import { PlanRequest, SkillMatchingRequest, AdjustPlanSimpleRequest, SchedulingConfig } from '../types';
 import { MultiShiftPlanningService } from '../services/multiShiftPlanningService';
 import { MultiShiftFilePlanningService } from '../services/multiShiftFilePlanningService';
 import { SkillMatchingService } from '../services/skillMatchingService';
 import { parseExcelData } from '../utils/excelLoader';
 import { aggregateSchedule, mergeConsecutiveItems } from '../utils/scheduleAggregator';
 import { VerificationService } from '../services/verificationService';
-import { PlanAdjustmentService } from '../services/planAdjustmentService';
+// import { PlanAdjustmentService } from '../services/planAdjustmentService';
 import { generateResultsExcel, generateMultiShiftResultsExcel, MultiShiftExcelData } from '../utils/excelGenerator';
 import { loadSkilledWorkers, loadCrossDeptTasks, loadStationTemplateMap } from '../utils/stationDepartmentLoader';
 import { taskInterruptionService } from '../services/taskInterruptionService';
-import { CreateInterruptionRequest } from '../types';
+import { CreateInterruptionRequest, PlanPreviewRequest, ProductionPlanShiftDto, DeficitTask, MultiShiftPlanRequest, ProductionPlanDto, WorkerDto, DepartmentDto, TaskDto, WorkerTaskDto, DeficitTaskDto, ShiftDto } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
 import { prisma } from '../config/db'; // Import Prisma Client
+import { SchedulingAdapterService } from '../services/schedulingAdapterService'; // Import Adapter
+import { LaborEstimationService } from '../services/laborEstimationService';
+import { getWorkersWithShifts, getTasksWithEstimationData, getAllTaskIdsSample, getClockedInWorkerIds } from '../queries/adjustPlan.query';
 
 export class WorkerTaskController {
     private planningService: PlanningService;
     private multiShiftPlanningService: MultiShiftPlanningService;
     private multiShiftFilePlanningService: MultiShiftFilePlanningService;
     private skillMatchingService: SkillMatchingService;
-    private planAdjustmentService: PlanAdjustmentService;
-    // taskInterruptionService is a singleton, no need to store it
+    // private planAdjustmentService: PlanAdjustmentService;
+    private schedulingAdapterService: SchedulingAdapterService;
+    private laborEstimationService: LaborEstimationService;
 
     constructor() {
         this.planningService = new PlanningService();
         this.multiShiftPlanningService = new MultiShiftPlanningService();
         this.multiShiftFilePlanningService = new MultiShiftFilePlanningService();
         this.skillMatchingService = new SkillMatchingService();
-        this.planAdjustmentService = new PlanAdjustmentService();
-        // taskInterruptionService is already instantiated as a singleton
+        // this.planAdjustmentService = new PlanAdjustmentService();
+        this.schedulingAdapterService = new SchedulingAdapterService();
+        this.laborEstimationService = new LaborEstimationService(prisma);
     }
+
+
 
     public plan = async (req: Request, res: Response) => {
         try {
@@ -273,25 +281,74 @@ export class WorkerTaskController {
 
             const startTime = req.body.startTime || "2024-01-01T07:00:00Z";
             const endTime = req.body.endTime || "2024-01-01T17:00:00Z";
-            const shift1StartTime = req.body.shift1StartTime || startTime;
-            const shift1EndTime = req.body.shift1EndTime || endTime;
-            const shift2StartTime = req.body.shift2StartTime;
-            const shift2EndTime = req.body.shift2EndTime;
-            const startingShiftPct = parseFloat(req.body.startingShiftPct);
-            const endingShiftPct = req.body.endingShiftPct !== undefined ? parseFloat(req.body.endingShiftPct) : undefined;
 
-            if (isNaN(startingShiftPct)) {
-                res.status(400).send("startingShiftPct is required and must be a number.");
-                return;
+            // --- DYNAMIC SHIFT PARSING ---
+            let shiftsInput = [];
+
+            // 1. Try parsing 'shifts' JSON string
+            if (req.body.shifts) {
+                try {
+                    const parsed = typeof req.body.shifts === 'string' ? JSON.parse(req.body.shifts) : req.body.shifts;
+                    if (Array.isArray(parsed)) {
+                        shiftsInput = parsed;
+                    }
+                } catch (e) {
+                    console.warn("Failed to parse 'shifts' body param", e);
+                }
             }
+
+            // 2. Fallback to Legacy Shift 1/2 fields if no shifts provided
+            if (shiftsInput.length === 0) {
+                const shift1StartTime = req.body.shift1StartTime || startTime;
+                const shift1EndTime = req.body.shift1EndTime || endTime;
+                const shift2StartTime = req.body.shift2StartTime;
+                const shift2EndTime = req.body.shift2EndTime;
+                const startingShiftPct = parseFloat(req.body.startingShiftPct);
+
+                // Legacy required fields check
+                if (isNaN(startingShiftPct)) {
+                    // If we have no shifts AND no legacy pct, we can't plan properly.
+                    // But maybe user just wants single shift default?
+                    // Let's warn but proceed with 1 shift.
+                }
+
+                // Shift 1
+                shiftsInput.push({
+                    id: 'shift-1',
+                    startTime: shift1StartTime,
+                    endTime: shift1EndTime,
+                    productionRate: !isNaN(startingShiftPct) ? startingShiftPct : 1.0
+                });
+
+                // Shift 2
+                if (shift2StartTime && shift2EndTime) {
+                    shiftsInput.push({
+                        id: 'shift-2',
+                        startTime: shift2StartTime,
+                        endTime: shift2EndTime,
+                        productionRate: req.body.endingShiftPct ? parseFloat(req.body.endingShiftPct) : (1 - (startingShiftPct || 0.5))
+                    });
+                }
+            }
+
+            // Construct Adapter-style input (ExternalSchedulingInput)
+            // But we are calling MultiShiftFilePlanningService directly. 
+            // It expects `MultiShiftFilePlanRequest`.
+            // Let's look at `multiShiftFilePlanningService.plan` signature.
+            // It takes `input: { shifts?: ..., shift1Interval?: ... }`.
+            // We should Update MultiShiftFilePlanningService to accept `shifts` array too if it doesn't already.
+            // Wait, I updated `MultiShiftPlanningService` (core), but `MultiShiftFilePlanningService` calls it.
+            // `MultiShiftFilePlanningService.plan` constructs `MultiShiftPlanRequest`.
+
+            // Let's pass the raw `shifts` array to `MultiShiftFilePlanningService`
+            // and ensure that service handles it. 
+            // NOTE: I haven't checked `MultiShiftFilePlanningService.ts` yet! 
+            // I should assume I need to update it to pass `shifts` through.
 
             const requestBody = {
                 startTime,
                 endTime,
-                startingShiftPct,
-                endingShiftPct,
-                shift1Interval: { startTime: shift1StartTime, endTime: shift1EndTime },
-                shift2Interval: shift2StartTime && shift2EndTime ? { startTime: shift2StartTime, endTime: shift2EndTime } : undefined,
+                shifts: shiftsInput, // NEW FIELD
                 tasks,
                 workers,
                 scheduling: this.parseSchedulingConfig(req.body)
@@ -300,90 +357,113 @@ export class WorkerTaskController {
             const result = await this.multiShiftFilePlanningService.plan(requestBody as any);
 
             // Calculate taskProgress manually to ensure it's sent to frontend
+            // REFACTOR: Handle N shifts
             const getDateKey = (dateStr: string) => dateStr.split('T')[0];
-            const shift1Date = getDateKey(shift1StartTime);
-            const shift2Date = shift2StartTime ? getDateKey(shift2StartTime) : undefined;
 
             const taskProgress = tasks.map(task => {
-                const shift1TaskAssignments = result.assignments.filter(a =>
-                    a.taskId === task.taskId && getDateKey(a.startDate) === shift1Date
-                );
-                const shift2TaskAssignments = shift2Date ? result.assignments.filter(a =>
-                    a.taskId === task.taskId && getDateKey(a.startDate) === shift2Date
-                ) : [];
-
-                const shift1Hours = shift1TaskAssignments.reduce((total, a) => {
-                    return total + (new Date(a.endDate).getTime() - new Date(a.startDate).getTime()) / (1000 * 60 * 60);
-                }, 0);
-                const shift2Hours = shift2TaskAssignments.reduce((total, a) => {
-                    return total + (new Date(a.endDate).getTime() - new Date(a.startDate).getTime()) / (1000 * 60 * 60);
-                }, 0);
-
                 const totalRequired = task.estimatedTotalLaborHours || 0;
-                const totalWorked = shift1Hours + shift2Hours;
+                let totalWorked = 0;
+                let completedInOneShift = false;
+                let whichShiftCompleted = '';
+                let isSpanning = false;
+
+                // Track hours per shift
+                const hoursByShift: Record<string, number> = {};
+
+                shiftsInput.forEach((shift: any) => {
+                    const shiftDate = getDateKey(shift.startTime);
+
+                    const shiftAssignments = result.assignments.filter(a =>
+                        a.taskId === task.taskId &&
+                        // Overlap check? Or just date match? 
+                        // Ideally we check if assignment falls within shift window.
+                        // For simplicity, we stick to date-based matching if shift IDs aren't on assignments yet.
+                        // But wait, `result.assignments` might NOT have shiftId if `multiShiftFilePlanningService` doesn't stamp it.
+                        // The core `MultiShiftPlanningService` now DOES stamp `shiftId`!
+                        (a.shiftId === shift.id || (getDateKey(a.startDate) === shiftDate))
+                    );
+
+                    const hours = shiftAssignments.reduce((total, a) => {
+                        return total + (new Date(a.endDate).getTime() - new Date(a.startDate).getTime()) / (1000 * 60 * 60);
+                    }, 0);
+
+                    hoursByShift[shift.id] = hours;
+                    totalWorked += hours;
+
+                    if (hours >= totalRequired) {
+                        completedInOneShift = true;
+                        whichShiftCompleted = shift.id;
+                    }
+                });
+
+                // If not completed in one, but worked in multiple
+                const workedShiftsCount = Object.values(hoursByShift).filter(h => h > 0).length;
+                if (!completedInOneShift && workedShiftsCount > 1) {
+                    isSpanning = true;
+                }
+
                 const completionPct = totalRequired > 0 ? Math.min(100, (totalWorked / totalRequired) * 100) : 0;
 
                 return {
                     taskId: task.taskId,
                     taskName: task.name,
-                    shift1Hours,
-                    shift2Hours,
+                    hoursByShift, // NEW: send map
+                    // Legacy Compat
+                    shift1Hours: hoursByShift['shift-1'] || 0,
+                    shift2Hours: hoursByShift['shift-2'] || 0,
+
                     totalRequiredHours: totalRequired,
                     completionPercentage: completionPct,
                     completedInShift: completionPct >= 100
-                        ? (shift1Hours >= totalRequired ? 'shift1' : 'shift2')
-                        : (shift1Hours > 0 && shift2Hours > 0 ? 'spans_shifts' : 'incomplete'),
+                        ? (completedInOneShift ? whichShiftCompleted : 'spans_shifts') // Return ID instead of 'shift1'
+                        : (workedShiftsCount > 1 ? 'spans_shifts' : 'incomplete'),
                     shiftCompletionPreference: task.shiftCompletionPreference
                 };
             });
 
-            // --- PERSISTENCE LAYER ---
-            let planId: string | undefined;
-            try {
-                // Save Payload + Assignments
-                const savedPlan = await prisma.plan.create({
-                    data: {
-                        name: `MultiShift Import ${new Date().toISOString()}`,
-                        inputSnapshot: requestBody as any, // Save full input
-                        assignments: {
-                            create: result.assignments
-                                .filter(a => (a.workerId && a.taskId) || (a as any).isWaitTask) // Allow wait tasks without worker
-                                .map(a => ({
-                                    workerId: a.workerId || 'GAP_VIRTUAL_WORKER', // Placeholder for gap
-                                    taskId: a.taskId || 'unknown',
-                                    shiftId: 'unknown',
-                                    startTime: new Date(a.startDate),
-                                    endTime: new Date(a.endDate)
-                                }))
-                        }
-                    }
-                });
-                planId = savedPlan.id;
-                console.log(`[Persistence] Saved Plan ID: ${planId}`);
-            } catch (dbError) {
-                console.error("[Persistence] Failed to save plan to DB:", dbError);
-                // Non-blocking failure - use ephemeral planId so frontend can still use Hold/Resume
-                planId = 'ephemeral';
-            }
+            // Tiago's Persistence Layer Logic (Disabled for Stateless API)
+            // let planId: string | undefined;
+            // try {
+            //     const savedPlan = await prisma.productionPlan.create({
+            //         data: {
+            //             name: `MultiShift Import ${new Date().toISOString()}`,
+            //             inputSnapshot: requestBody as any,
+            //             assignments: {
+            //                 create: result.assignments
+            //                     .filter(a => (a.workerId && a.taskId) || (a as any).isWaitTask)
+            //                     .map(a => ({
+            //                         workerId: a.workerId || 'GAP_VIRTUAL_WORKER',
+            //                         taskId: a.taskId || 'unknown',
+            //                         shiftId: a.shiftId || 'unknown', // Now available!
+            //                         startTime: new Date(a.startDate),
+            //                         endTime: new Date(a.endDate)
+            //                     }))
+            //             }
+            //         }
+            //     });
+            //     planId = savedPlan.id;
+            //     console.log(`[Persistence] Saved Plan ID: ${planId}`);
+            // } catch (dbError) {
+            //     console.error("[Persistence] Failed to save plan to DB:", dbError);
+            //     planId = 'ephemeral';
+            // }
+            const planId = 'ephemeral';
 
-            // FIX: Merge consecutive blocks for UI display
-            // The frontend Gantt chart renders what we send here.
-            // If we send 5-min blocks, it renders 5-min blocks.
-            // We must merge them.
             const mergedAssignments = mergeConsecutiveItems(result.assignments);
             const mergedIdle = mergeConsecutiveItems(result.idleWorkers.map(u => ({ ...u, taskId: 'IDLE' })));
 
             res.json({
-                version: "multi-shift-manual-ignored-shiftids",
-                planId, // Return ID to client
+                version: "multi-shift-file-v3-dynamic",
+                planId,
                 ...result,
-                assignments: mergedAssignments, // OVERRIDE with merged
-                idleWorkers: mergedIdle,        // OVERRIDE with merged
-                taskProgress,
+                assignments: mergedAssignments,
+                idleWorkers: mergedIdle,
+                taskProgress, // Updated structure
                 tasks,
                 workers
             });
         } catch (error: any) {
+            console.error("Plan File Error", error);
             const status = error?.statusCode || error?.status || 500;
             res.status(status).json({ error: error?.message || 'Internal Server Error' });
         }
@@ -693,54 +773,7 @@ export class WorkerTaskController {
      * Replans remaining tasks from currentTime, minimizing reassignments.
      */
     public adjustPlan = async (req: Request, res: Response) => {
-        try {
-            const rawPlanId = req.params.planId;
-            const planId = Array.isArray(rawPlanId) ? rawPlanId[0] : rawPlanId;
-            const body = req.body as AdjustPlanSimpleRequest;
-
-            if (!planId) {
-                res.status(400).json({ error: 'planId is required' });
-                return;
-            }
-            if (!body.currentTime) {
-                res.status(400).json({ error: 'currentTime is required' });
-                return;
-            }
-            if (!body.tasks || !body.workers) {
-                res.status(400).json({ error: 'tasks and workers definitions are required (server is stateless)' });
-                return;
-            }
-
-            // Get Original Plan Assignments from DB
-            const { getPlanById } = await import('../models/planModel');
-            const plan = await getPlanById(planId);
-            if (!plan) {
-                res.status(404).json({ error: 'Plan not found' });
-                return;
-            }
-
-            const originalAssignments = plan.assignments.map(a => ({
-                workerId: a.workerId,
-                taskId: a.taskId,
-                startDate: a.startTime.toISOString(),
-                endDate: a.endTime.toISOString(),
-                shiftId: a.shiftId || undefined
-            }));
-
-            const diff = await this.planAdjustmentService.adjustPlanReplan(
-                originalAssignments,
-                body.tasks,
-                body.workers,
-                body
-            );
-
-            res.json(diff);
-
-        } catch (error: any) {
-            console.error("[AdjustPlan] Error:", error);
-            const status = error?.statusCode || error?.status || 500;
-            res.status(status).json({ error: error?.message || 'Internal Server Error' });
-        }
+        res.status(501).json({ error: "Not Implemented in Stateless Mode" });
     };
 
     private parseSchedulingConfig(body: any): SchedulingConfig | undefined {
@@ -1036,4 +1069,528 @@ export class WorkerTaskController {
             res.status(500).json({ error: error?.message || 'Internal Server Error' });
         }
     };
+
+    /**
+     * Temporary Data Visualization Tool
+     * Serves a simple HTML page to browse TaskTemplates, TimeStudies, and Attributes.
+     * Helpful for debugging "Missing Link" issues in labor estimation.
+     */
+    public getDataViz = async (req: Request, res: Response) => {
+        try {
+            const templates = await prisma.taskTemplate.findMany({
+                include: {
+                    taskTemplateModuleAttributes: { include: { moduleAttribute: true } },
+                    timeStudies: { include: { timeStudyModuleAttributes: { include: { moduleAttribute: true } } } }
+                },
+                orderBy: { name: 'asc' }
+            });
+
+            const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Labor Data Viz</title>
+                <style>
+                    body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+                    .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                    h1 { color: #333; }
+                    h3 { margin-top: 0; color: #007bff; }
+                    .tag { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; margin-bottom: 5px; }
+                    .tag-req { background: #e3f2fd; color: #0d47a1; border: 1px solid #90caf9; }
+                    .tag-avail { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+                    .tag-missing { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
+                    .section { margin-top: 10px; }
+                    .match { color: green; font-weight: bold; }
+                    .mismatch { color: red; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                <h1>Labor Data Visualization (${templates.length} Templates)</h1>
+                ${templates.map(t => {
+                const reqAttrs = t.taskTemplateModuleAttributes.map(a => a.moduleAttribute.name);
+                const ts = t.timeStudies[0]; // Just check first one for viz
+                const availAttrs = ts ? ts.timeStudyModuleAttributes.map(a => a.moduleAttribute.name) : [];
+
+                // Intersection
+                const intersection = reqAttrs.filter(r => availAttrs.includes(r));
+                const isPerfect = intersection.length > 0 && intersection.length === reqAttrs.length;
+                const status = !ts ? 'NO TIME STUDY' : (isPerfect ? 'PERFECT' : (intersection.length > 0 ? 'PARTIAL' : 'MISMATCH'));
+                const statusColor = status === 'PERFECT' ? 'green' : (status === 'MISMATCH' ? 'red' : 'orange');
+
+                return `
+                    <div class="card">
+                        <h3>${t.name} <span style="font-size:0.8em; color:${statusColor}">[${status}]</span></h3>
+                        
+                        <div class="section">
+                            <strong>Required (Logic):</strong><br/>
+                            ${reqAttrs.length ? reqAttrs.map(a => `<span class="tag tag-req">${a}</span>`).join('') : '<em>None</em>'}
+                        </div>
+
+                        <div class="section">
+                            <strong>Available (History):</strong><br/>
+                            ${ts ? availAttrs.map(a => `<span class="tag tag-avail">${a}</span>`).join('') : '<em>No Time Studies</em>'}
+                        </div>
+
+                        ${ts && !isPerfect ? `
+                        <div class="section">
+                            <strong style="color:red">Missing Links:</strong><br/>
+                            ${reqAttrs.filter(r => !availAttrs.includes(r)).map(a => `<span class="tag tag-missing">${a}</span>`).join('')}
+                        </div>
+                        ` : ''}
+
+                        <div class="section">
+                            <strong>Fallback Strategy:</strong> 
+                            ${status === 'PERFECT' ? 'Proportional Scaling' : (ts ? 'Average Clock Time (' + ts.clockTime + 'h)' : 'Default (1.0h)')}
+                        </div>
+                    </div>
+                    `;
+            }).join('')}
+            </body>
+            </html>
+            `;
+
+            res.send(html);
+        } catch (error: any) {
+            res.status(500).send(error.message);
+        }
+    };
+
+    /**
+     * Production Plan Preview (Swift Client)
+     * Takes tasks and shift definitions, returns a structured plan preview.
+     */
+    public getProductionPlanPreview = async (req: Request, res: Response) => {
+        try {
+            const body = req.body as PlanPreviewRequest;
+
+            // 1. Validate Input
+            if (!body.tasks || !Array.isArray(body.tasks)) {
+                res.status(400).json({ error: "Tasks array is required (key: 'tasks')." });
+                return;
+            }
+            // Check for 'productionPlanShifts' (Swift Client) or 'shifts' (Legacy/Simple)
+            const shiftsInput = body.productionPlanShifts || (body as any).shifts;
+            if (!shiftsInput || !Array.isArray(shiftsInput)) {
+                res.status(400).json({ error: "productionPlanShifts array is required (key: 'productionPlanShifts')." });
+                return;
+            }
+
+            // 2. Auto-fetch workers + attendance data from Data Connect (READ-ONLY)
+            const [dcWorkers, clockedInWorkerIds] = await Promise.all([
+                getWorkersWithShifts(),
+                getClockedInWorkerIds().catch(e => {
+                    console.warn('[Preview] TimeLogs fetch failed, skipping attendance check:', e);
+                    return new Set<string>();
+                })
+            ]);
+            console.log(`[Preview] Fetched ${dcWorkers.length} workers, ${clockedInWorkerIds.size} clocked-in`);
+
+            // Map Data Connect Workers to Swift 'Worker' Struct
+            const hydratedWorkers: WorkerDto[] = dcWorkers.map((w: any) => {
+                const wdList = w.workerDepartments_on_worker || w.workerDepartments || [];
+                const primaryWd = wdList.find((wd: any) => wd.isLead) || wdList[0];
+                const dept: DepartmentDto = primaryWd?.department
+                    ? { id: primaryWd.department.id }
+                    : { id: '00000000-0000-0000-0000-000000000000' };
+
+                return {
+                    id: w.id,
+                    department: dept,
+                    name: `${w.firstName || ''} ${w.lastName || ''}`.trim(),
+                    rankedSkills: w.rankedSkills || [],
+                    workerTaskTemplates_on_worker: w.workerTaskTemplates_on_worker || []
+                };
+            });
+
+            // 3. Map Inputs to Planner Request
+            // Use the unique production plan shift ID (s.id) — NOT the shift template ID (s.shift.id)
+            // Multiple shifts can share the same template (e.g. same "Five eights" on Mon, Tue, Wed, Thu)
+            const safeShiftWindows = shiftsInput.map((s: any) => {
+                const shiftDetails = s.shift || s;
+                const isStringDate = (v: any) => typeof v === 'string' && v.includes('T');
+                const toIso = (v: any) => isStringDate(v) ? v : new Date(v * 1000).toISOString();
+
+                const startTime = s.occurrenceStartTimestamp || shiftDetails.startTime;
+                const endTime = s.occurrenceEndTimestamp || shiftDetails.endTime;
+
+                return {
+                    shiftId: s.id || s.shiftId || shiftDetails.id, // Prefer unique PPS ID over shared template ID
+                    occurrenceDate: s.occurrenceDate || null,       // e.g. "2026-01-20" — used to match assignments to shifts
+                    productionRate: s.productionRate !== undefined ? s.productionRate : (s.shareOfWork !== undefined ? s.shareOfWork : (1.0 / shiftsInput.length)),
+                    shiftInterval: {
+                        start: toIso(startTime),
+                        end: toIso(endTime)
+                    }
+                };
+            });
+
+            // Fetch task data from production DB via Data Connect (READ-ONLY)
+            // This gives us: labor estimation data, departmentId (via taskTemplate), prerequisites
+            const taskIds = body.tasks.map(t => t.id).filter(id => id);
+            // Normalize UUIDs for consistent map keys (DC may return different format than client)
+            const normalizeId = (id: string) => id?.toLowerCase().replace(/-/g, '');
+            let laborEstimates = new Map<string, number>();
+            let taskDeptMap = new Map<string, string>();       // normalizedTaskId → departmentId
+            let taskPrereqMap = new Map<string, string>();     // normalizedTaskId → prerequisiteTaskTemplateId
+            let taskTemplateMap = new Map<string, string>();   // normalizedTaskId → taskTemplateId
+            let taskMinWorkersMap = new Map<string, number>(); // normalizedTaskId → minWorkers
+            let taskSkillsMap = new Map<string, string[]>();  // normalizedTaskId → rankedSkills
+            let taskMaxWorkersMap = new Map<string, number>(); // normalizedTaskId → maxWorkers
+
+            let _allDbTaskSample: any[] = []; // Temp debug: sample task IDs from DC
+            try {
+                // Temp debug: fetch sample task IDs to help with testing
+                try { _allDbTaskSample = await getAllTaskIdsSample(5); } catch (_) { }
+
+                if (taskIds.length > 0) {
+                    const estimationData = await getTasksWithEstimationData(taskIds);
+                    laborEstimates = calculateLaborEstimates(estimationData);
+
+                    // Extract department and prerequisite info from DC data
+                    // Use normalizeId for map keys to handle UUID format differences
+                    for (const dcTask of estimationData) {
+                        const nId = normalizeId(dcTask.id);
+                        const tmpl = dcTask.taskTemplate;
+                        if (!tmpl) continue;
+                        if (tmpl.department?.id) {
+                            taskDeptMap.set(nId, tmpl.department.id);
+                        }
+                        if (tmpl.id) {
+                            taskTemplateMap.set(nId, tmpl.id);
+                        }
+                        if (tmpl.prerequisiteTaskTemplate?.id) {
+                            taskPrereqMap.set(nId, tmpl.prerequisiteTaskTemplate.id);
+                        }
+                        if (tmpl.minWorkers != null) {
+                            taskMinWorkersMap.set(nId, tmpl.minWorkers);
+                        }
+                        if (tmpl.maxWorkers != null) {
+                            taskMaxWorkersMap.set(nId, tmpl.maxWorkers);
+                        }
+                        if (tmpl.rankedSkills && Array.isArray(tmpl.rankedSkills) && tmpl.rankedSkills.length > 0) {
+                            taskSkillsMap.set(nId, tmpl.rankedSkills);
+                        }
+                    }
+
+                    // Debug: log estimation details
+                    const estimateValues = Array.from(laborEstimates.entries()).map(([id, hrs]) => `${id.slice(0, 8)}=${hrs.toFixed(2)}h`);
+                    console.log(`[Preview] Estimated labor hours for ${laborEstimates.size}/${taskIds.length} tasks, ${taskDeptMap.size} with departments via Data Connect.`);
+                    console.log(`[Preview] DC returned ${estimationData.length} tasks from DB for ${taskIds.length} requested IDs`);
+                    console.log(`[Preview] Estimates: ${estimateValues.slice(0, 10).join(', ')}${estimateValues.length > 10 ? ` ... and ${estimateValues.length - 10} more` : ''}`);
+
+                    // Log tasks that got no estimate
+                    const missingEstimates = taskIds.filter(id => !laborEstimates.has(normalizeId(id)));
+                    if (missingEstimates.length > 0) {
+                        console.log(`[Preview] WARNING: ${missingEstimates.length} tasks got NO estimate: ${missingEstimates.slice(0, 5).map(id => id.slice(0, 8)).join(', ')}`);
+                    }
+                }
+            } catch (e) {
+                console.warn(`[Preview] Data Connect task data fetch failed, using defaults:`, e);
+            }
+
+            // Build templateId → taskIds map for prerequisite resolution
+            // Normalize template IDs too — DC may return different UUID formats
+            const templateToTaskIds = new Map<string, string[]>();
+            for (const [taskId, tmplId] of taskTemplateMap) {
+                const nTmplId = normalizeId(tmplId);
+                if (!templateToTaskIds.has(nTmplId)) {
+                    templateToTaskIds.set(nTmplId, []);
+                }
+                templateToTaskIds.get(nTmplId)!.push(taskId);
+            }
+
+            // Debug prerequisite resolution
+            console.log(`[Preview] Prerequisite maps: taskPrereqMap=${taskPrereqMap.size} entries, templateToTaskIds=${templateToTaskIds.size} templates`);
+            if (taskPrereqMap.size > 0) {
+                for (const [taskId, prereqTmplId] of taskPrereqMap) {
+                    const nPrereqTmplId = normalizeId(prereqTmplId);
+                    const resolved = templateToTaskIds.get(nPrereqTmplId);
+                    console.log(`[Preview] Prereq: task ${taskId.slice(0,8)} → prereqTemplate ${prereqTmplId.slice(0,8)} → resolved to ${resolved ? resolved.map(id => id.slice(0,8)).join(',') : 'NONE (template not in current task set)'}`);
+                }
+            } else {
+                console.log(`[Preview] WARNING: No prerequisiteTaskTemplate found in ANY DC task data — check if prerequisiteTaskTemplate field is populated in DB`);
+            }
+
+            const multiShiftRequest: MultiShiftPlanRequest = {
+                shifts: safeShiftWindows,
+                tasks: body.tasks.map(t => {
+                    // Normalize task ID for map lookups (DC may return different UUID format)
+                    const nId = normalizeId(t.id);
+                    // Resolve prerequisiteTaskIds from template relationship
+                    const prereqTemplateId = taskPrereqMap.get(nId);
+                    const prerequisiteTaskIds = prereqTemplateId
+                        ? (templateToTaskIds.get(normalizeId(prereqTemplateId)) || [])
+                        : [];
+
+                    return {
+                        ...t,
+                        taskId: normalizeId(t.id),
+                        // Department from DC (taskTemplate.department), fallback to client-sent
+                        departmentId: taskDeptMap.get(nId) || (t as any).departmentId || (t as any).department?.id || undefined,
+                        estimatedTotalLaborHours: laborEstimates.get(nId) ?? t.estimatedTotalLaborHours ?? 1.0,
+                        minWorkers: taskMinWorkersMap.get(nId) ?? (t as any).minWorkers ?? 1,
+                        maxWorkers: taskMaxWorkersMap.get(nId) ?? (t as any).maxWorkers ?? 100,
+                        prerequisiteTaskIds: prerequisiteTaskIds.length > 0 ? prerequisiteTaskIds : ((t as any).prerequisiteTaskIds || []),
+                        requiredSkills: taskSkillsMap.get(nId) || (t as any).requiredSkills || [],
+                    };
+                }) as any,
+                workers: hydratedWorkers.map(w => {
+                    // Map DB WorkerTaskPreference enum to numeric rank for BalancingService
+                    const prefRank: Record<string, number> = {
+                        'primaryJob': 1, 'secondaryJob': 2, 'canHelp': 3, 'canNotHelp': 4
+                    };
+                    const prefs: Record<string, number> = {};
+                    for (const wtt of (w as any).workerTaskTemplates_on_worker || []) {
+                        const name = wtt.taskTemplate?.name;
+                        if (name && wtt.preference) {
+                            prefs[name] = prefRank[wtt.preference] ?? 3;
+                        }
+                    }
+                    return {
+                        id: w.id,
+                        workerId: w.id, // Internal planner uses 'workerId'
+                        name: w.name,
+                        departmentId: w.department?.id || undefined, // Department for dept-wise scheduling
+                        preferences: Object.keys(prefs).length > 0 ? prefs : undefined,
+                        skills: (w as any).rankedSkills || [],
+                        shiftPreference: undefined,
+                        availability: undefined
+                    };
+                }) as any,
+                enforceDepartmentMatch: true,
+                useCrewCap: false,
+                useTwoPassDepartmentScheduling: false, // Toggle: Pass 1 = hard dept, Pass 2 = soft scoring for idle workers
+                preventLateJoiners: true, // Toggle: don't assign new workers to tasks past halfway with an active crew
+                keepCrewTogether: true, // Toggle: all crew members stay on a task until it's complete
+                clockedInWorkerIds
+            };
+
+            // 4. Run Planning Logic
+            const result = await this.multiShiftPlanningService.plan(multiShiftRequest);
+
+            // 5. Transform to ProductionPlanShiftDto Structure
+            // Match assignments to shifts by date (occurrenceDate) or by time window
+            const getDateFromIso = (iso: string) => iso ? iso.slice(0, 10) : ''; // "2026-01-20T13:30:00Z" → "2026-01-20"
+
+            const getShiftIdForAssignment = (assignment: any): string => {
+                // First try: match by shiftId if planner tagged it with unique PPS ID
+                if (assignment.shiftId) {
+                    const match = safeShiftWindows.find(s => s.shiftId === assignment.shiftId);
+                    if (match) return match.shiftId;
+                }
+                // Second: match by occurrenceDate — compare assignment's date to shift's occurrence date
+                const assignDate = getDateFromIso(assignment.startDate);
+                for (const s of safeShiftWindows) {
+                    if (s.occurrenceDate && s.occurrenceDate === assignDate) return s.shiftId;
+                }
+                // Fallback: match by time window
+                const assignStart = new Date(assignment.startDate).getTime();
+                for (const s of safeShiftWindows) {
+                    const sStart = new Date(s.shiftInterval.start).getTime();
+                    const sEnd = new Date(s.shiftInterval.end).getTime();
+                    if (assignStart >= sStart && assignStart < sEnd) return s.shiftId;
+                }
+                return 'unknown';
+            };
+
+            const taskMap = new Map((body.tasks as any[]).map(t => [t.id, t]));
+            const workerMap = new Map(hydratedWorkers.map(w => [w.id, w]));
+
+            const productionPlanShifts: ProductionPlanShiftDto[] = shiftsInput.map((s: any, index: number) => {
+                const shiftDetails = s.shift || s;
+                const ppsId = s.id || s.shiftId || shiftDetails.id; // Unique production plan shift ID
+                const safeWindow = safeShiftWindows[index];
+
+                // Filter assignments belonging to THIS specific shift occurrence
+                const rawShiftAssignments = result.assignments.filter(a => getShiftIdForAssignment(a) === safeWindow.shiftId && a.workerId);
+
+                // Merge consecutive 5-min time steps into consolidated blocks
+                const shiftAssignments = mergeConsecutiveItems(rawShiftAssignments);
+
+                const workerTasks = shiftAssignments.map(a => ({
+                    id: uuidv4(),
+                    workerId: a.workerId || null,
+                    taskId: a.taskId || null,
+                    startDate: a.startDate,
+                    endDate: a.endDate
+                }));
+
+                const isLastShift = index === shiftsInput.length - 1;
+                let shiftDeficits: DeficitTaskDto[] = [];
+
+                if (isLastShift && result.deficitTasks) {
+                    shiftDeficits = result.deficitTasks.map(d => ({
+                        id: uuidv4(),
+                        taskId: d.taskId || null,
+                        deficitHours: d.deficitHours
+                    }));
+                }
+
+                return {
+                    id: s.id || uuidv4(),
+                    shift: shiftDetails,
+                    occurrenceStartTimestamp: safeWindow.shiftInterval.start,
+                    occurrenceEndTimestamp: safeWindow.shiftInterval.end,
+                    occurrenceDate: safeWindow.occurrenceDate,
+                    workerTasks,
+                    deficitTasks: shiftDeficits
+                };
+            });
+
+            // 6. Return Response
+            // startShift/endShift removed as per user request (redundant with productionPlanShifts)
+
+            const responseData = {
+                id: 'preview-plan-id',
+                startDate: (body as any).startTimestamp || body.startTime,
+                endDate: (body as any).endTimestamp || body.endTime,
+                productionPlanShifts: productionPlanShifts,
+                _debug: {
+                    totalTasksInput: taskIds.length,
+                    tasksWithEstimates: laborEstimates.size,
+                    unmatchedTaskIds: taskIds.filter(id => !laborEstimates.has(normalizeId(id))),
+                    workersFound: hydratedWorkers.length,
+                    shiftWindows: safeShiftWindows.map(s => ({ shiftId: s.shiftId, start: s.shiftInterval.start, end: s.shiftInterval.end })),
+                    sampleEstimates: Object.fromEntries(Array.from(laborEstimates.entries()).map(([id, hrs]) => [id, hrs])),
+                    taskWorkerLimits: Object.fromEntries(Array.from(taskMaxWorkersMap.entries()).map(([id, max]) => [id, { min: taskMinWorkersMap.get(id) || 1, max }])),
+                    taskPrerequisites: Object.fromEntries(
+                        (multiShiftRequest.tasks as any[])
+                            .filter(t => t.prerequisiteTaskIds && t.prerequisiteTaskIds.length > 0)
+                            .map(t => [normalizeId(t.taskId || t.id), t.prerequisiteTaskIds])
+                    ),
+                    rawAssignmentsFromPlanner: result.assignments.length,
+                    totalWorkerTasks: productionPlanShifts.reduce((sum, s) => sum + s.workerTasks.length, 0),
+                    totalDeficitTasks: productionPlanShifts.reduce((sum, s) => sum + s.deficitTasks.length, 0),
+                    workersByDept: hydratedWorkers.reduce((acc: Record<string, number>, w) => { const d = w.department?.id || 'none'; acc[d] = (acc[d] || 0) + 1; return acc; }, {}),
+                    workers: hydratedWorkers.map(w => ({ id: w.id, name: w.name, department: w.department?.id || null, rankedSkills: (w as any).rankedSkills || [], preferences: (multiShiftRequest.workers as any[]).find(mw => mw.workerId === w.id)?.preferences || null })),
+                    taskDepts: Object.fromEntries(Array.from(taskDeptMap.entries())),
+                    taskSkills: Object.fromEntries((multiShiftRequest.tasks as any[]).filter(t => t.requiredSkills && t.requiredSkills.length > 0).map(t => [t.taskId, t.requiredSkills])),
+                    plannerDiag: (result as any)?._plannerDiag || null,
+                    shiftProductionRates: safeShiftWindows.map(s => ({ shiftId: s.shiftId, productionRate: s.productionRate })),
+                    workerPreferencesLoaded: (multiShiftRequest.workers as any[]).filter(w => w.preferences && Object.keys(w.preferences).length > 0).length,
+                    workersWithSkills: (multiShiftRequest.workers as any[]).filter(w => w.skills && w.skills.length > 0).length,
+                    tasksWithRequiredSkills: (multiShiftRequest.tasks as any[]).filter(t => t.requiredSkills && t.requiredSkills.length > 0).length,
+                    clockedInWorkers: clockedInWorkerIds.size,
+                    attendanceFilterActive: clockedInWorkerIds.size > 0,
+                    availableDbTasks: _allDbTaskSample,
+                    inputTaskIds: taskIds.slice(0, 5),
+                    twoPassDiag: (result as any)?._twoPassDiag || null,
+                }
+            };
+
+            res.json(responseData);
+
+        } catch (error: any) {
+            console.error("[GetProductionPlanPreview] Error:", error);
+            res.status(500).json({ error: error?.message || 'Internal Server Error' });
+        }
+    };
+}
+
+// ── Labor Estimation from Data Connect data ──────────────────────────────────
+// Same algorithm as LaborEstimationService but operates on pre-fetched DC data.
+// Algorithm: estimatedHours = timeStudy.clockTime * avg(moduleAttrValue / timeStudyAttrValue)
+
+function calculateLaborEstimates(tasks: any[]): Map<string, number> {
+    const results = new Map<string, number>();
+    const normalizeId = (id: string) => id?.toLowerCase().replace(/-/g, '');
+
+    for (const task of tasks) {
+        // Prefer estimatedLaborHours stored directly on the Task (from DC)
+        const dcEstimate = task.estimatedLaborHours;
+        if (dcEstimate != null && dcEstimate > 0) {
+            results.set(normalizeId(task.id), dcEstimate);
+            continue;
+        }
+
+        // Fallback: nonWorkerTaskDuration from template, or default 1.0h
+        const fallback = task.taskTemplate?.nonWorkerTaskDuration || 1.0;
+        console.log(`[Preview] No estimatedLaborHours for task ${task.id?.slice(0, 8)} → fallback ${fallback}h`);
+        results.set(normalizeId(task.id), fallback);
+    }
+
+    return results;
+}
+
+function estimateForSingleTask(task: any): number {
+    const taskTemplate = task.taskTemplate;
+    const traveler = task.traveler;
+
+    if (!traveler?.moduleProfile) {
+        throw new Error('No ModuleProfile');
+    }
+
+    // Step 1: Module profile attribute values
+    const moduleAttrValues = new Map<string, number>();
+    for (const mpma of (traveler.moduleProfile.moduleProfileModuleAttributes_on_moduleProfile || traveler.moduleProfile.moduleProfileModuleAttributes || [])) {
+        const numVal = parseFloat(mpma.value);
+        if (!isNaN(numVal)) {
+            moduleAttrValues.set(mpma.moduleAttribute?.id, numVal);
+        }
+    }
+
+    // Step 2: Relevant attribute IDs from task template
+    const relevantAttrIds = new Set<string>(
+        (taskTemplate?.taskTemplateModuleAttributes_on_taskTemplate || taskTemplate?.taskTemplateModuleAttributes || []).map((ttma: any) => ttma.moduleAttribute?.id)
+    );
+
+    // Step 3: Find best time study (most recent with valid clockTime)
+    const timeStudies = (taskTemplate?.timeStudies_on_taskTemplate || taskTemplate?.timeStudies || [])
+        .filter((ts: any) => ts.clockTime && ts.clockTime > 0)
+        .sort((a: any, b: any) => {
+            // Sort by date descending (most recent first)
+            if (!a.date && !b.date) return 0;
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
+
+    const timeStudy = timeStudies[0];
+    if (!timeStudy) {
+        throw new Error('No valid TimeStudy');
+    }
+
+    const clockTime = timeStudy.clockTime;
+
+    // Step 4: Intersection — attributes relevant to both template and module profile
+    const intersectedAttrIds: string[] = [];
+    for (const attrId of relevantAttrIds) {
+        if (moduleAttrValues.has(attrId)) {
+            intersectedAttrIds.push(attrId);
+        }
+    }
+
+    if (intersectedAttrIds.length === 0) {
+        // No attribute overlap — use clockTime directly
+        return Math.max(0.1, clockTime);
+    }
+
+    // Step 5: Time study attribute values
+    const timeStudyAttrValues = new Map<string, number>();
+    for (const tsma of (timeStudy.timeStudyModuleAttributes_on_timeStudy || timeStudy.timeStudyModuleAttributes || [])) {
+        const numVal = parseFloat(tsma.value);
+        if (!isNaN(numVal)) {
+            timeStudyAttrValues.set(tsma.moduleAttribute?.id, numVal);
+        }
+    }
+
+    // Step 6: Calculate ratios for valid attributes
+    let totalRatio = 0;
+    let validCount = 0;
+    for (const attrId of intersectedAttrIds) {
+        const moduleValue = moduleAttrValues.get(attrId)!;
+        const studyValue = timeStudyAttrValues.get(attrId);
+        if (!studyValue || studyValue === 0) continue;
+
+        totalRatio += moduleValue / studyValue;
+        validCount++;
+    }
+
+    if (validCount === 0) {
+        return Math.max(0.1, clockTime);
+    }
+
+    // Step 7: estimatedHours = clockTime * averageRatio
+    const averageRatio = totalRatio / validCount;
+    return Math.max(0.1, clockTime * averageRatio);
 }

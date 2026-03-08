@@ -67,6 +67,10 @@
     "src/models/userModel.ts",
     "src/models/employeeModel.ts",
     "src/models/timelogModel.ts",
-    "src/services/rag/**/*"
+    "src/services/rag/**/*",
+    "src/services/taskHoldService.ts",
+    "src/services/synchronizationService.ts",
+    "src/models/planModel.ts",
+    "src/services/planAdjustmentService.ts"
   ]
 }

@@ -17,7 +17,7 @@ export class TaskHoldService {
         message: string;
     }> {
         // 1. Get the plan with all assignments
-        const plan = await prisma.plan.findUnique({
+        const plan = await prisma.productionPlan.findUnique({
             where: { id: planId },
             include: { assignments: true }
         });
@@ -41,7 +41,7 @@ export class TaskHoldService {
         // 4. Get task definitions from inputSnapshot to find dependencies
         const inputSnapshot = plan.inputSnapshot as any;
         const tasks: Task[] = inputSnapshot?.tasks || [];
-        
+
         // 5. Build dependents map (taskId -> tasks that depend on it)
         const dependentsMap = this.buildDependentsMap(tasks);
 
@@ -50,7 +50,7 @@ export class TaskHoldService {
 
         // 7. Update all assignments for these tasks
         const now = new Date();
-        await prisma.workerTaskAssignment.updateMany({
+        await prisma.workerTask.updateMany({
             where: {
                 planId,
                 taskId: { in: Array.from(allTaskIdsToHold) }
@@ -80,7 +80,7 @@ export class TaskHoldService {
         message: string;
     }> {
         // 1. Get the plan with all assignments
-        const plan = await prisma.plan.findUnique({
+        const plan = await prisma.productionPlan.findUnique({
             where: { id: planId },
             include: { assignments: true }
         });
@@ -126,7 +126,7 @@ export class TaskHoldService {
             const newStartTime = new Date(assignment.startTime.getTime() + holdDurationMs);
             const newEndTime = new Date(assignment.endTime.getTime() + holdDurationMs);
 
-            await prisma.workerTaskAssignment.update({
+            await prisma.workerTask.update({
                 where: { id: assignment.id },
                 data: {
                     startTime: newStartTime,
@@ -176,9 +176,9 @@ export class TaskHoldService {
         while (queue.length > 0) {
             const current = queue.shift()!;
             if (result.has(current)) continue;
-            
+
             result.add(current);
-            
+
             const dependents = dependentsMap.get(current) || [];
             dependents.forEach(depId => {
                 if (!result.has(depId)) {
@@ -199,7 +199,7 @@ export class TaskHoldService {
         heldAt: Date | null;
         assignmentCount: number;
     }> {
-        const assignments = await prisma.workerTaskAssignment.findMany({
+        const assignments = await prisma.workerTask.findMany({
             where: { planId, taskId }
         });
 

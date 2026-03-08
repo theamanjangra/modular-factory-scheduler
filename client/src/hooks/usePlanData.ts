@@ -24,7 +24,7 @@ interface UsePlanDataResult {
     data: PlanResponse | null;
     loading: boolean;
     error: string | null;
-    runSimulation: () => Promise<void>;
+    runSimulation: (options?: MultiShiftOptions) => Promise<void>;
     runPlanFile: (file: File, shiftLength?: number) => Promise<void>;
     exportResults: (file: File, shiftLength?: number) => Promise<void>;
     runMultiShift: (file: File, options: MultiShiftOptions) => Promise<void>;
@@ -44,18 +44,30 @@ export interface SchedulingConfig {
 }
 
 export interface MultiShiftOptions {
-    startTime: string;
-    endTime: string;
-    startingShiftId: string;
-    endingShiftId: string;
-    shift1StartTime: string;
-    shift1EndTime: string;
-    useShift2: boolean;
+    startTime: string; // ISO
+    endTime: string;   // ISO
+
+    // Legacy / Compat (Optional now)
+    shift1StartTime?: string;
+    shift1EndTime?: string;
+    startingShiftId?: string;
+    startingShiftPct?: number;
+
+    useShift2?: boolean;
     shift2StartTime?: string;
     shift2EndTime?: string;
-    startingShiftPct: number;
+    endingShiftId?: string;
     endingShiftPct?: number;
-    scheduling?: SchedulingConfig;
+
+    // NEW: Dynamic Shifts
+    shifts?: {
+        id: string;
+        startTime: string; // ISO
+        endTime: string;   // ISO
+        productionRate: number;
+    }[];
+
+    scheduling: SchedulingConfig;
 }
 
 export function usePlanData(): UsePlanDataResult {
@@ -120,10 +132,17 @@ export function usePlanData(): UsePlanDataResult {
         const tasks = json.tasks || [];
         const taskNameMap = new Map(tasks.map((t: any) => [t.taskId, t.name]));
 
+        // Build task→department lookup from tasks array
+        const taskDeptMap = new Map<string, string>();
+        tasks.forEach((t: any) => {
+            if (t.taskId && t.departmentId) taskDeptMap.set(t.taskId, t.departmentId);
+        });
+
         const rawAssignments = (json.assignments || []).map((a: any) => ({
             workerId: a.workerId,
             taskId: a.taskId,
             taskName: taskNameMap.get(a.taskId) || a.taskId,
+            departmentId: taskDeptMap.get(a.taskId) || a.departmentId || undefined,
             startTime: a.startDate || a.startTime,
             endTime: a.endDate || a.endTime,
             type: 'assignment' as const,
@@ -208,13 +227,15 @@ export function usePlanData(): UsePlanDataResult {
         }
     };
 
-    const runSimulation = async () => {
+    const runSimulation = async (options?: MultiShiftOptions) => {
         setLoading(true);
         setError(null);
-        console.log("Triggering Simulation via API...");
+        console.log("Triggering Simulation via API...", options);
         try {
             const res = await fetch(`${API_BASE_URL}/api/v1/schedule/simulate`, {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(options || {})
             });
 
             if (!res.ok) {
@@ -279,13 +300,21 @@ export function usePlanData(): UsePlanDataResult {
         try {
             const formData = new FormData();
             formData.append('file', file);
+
+            // NEW: Dynamic Shifts
+            if (options.shifts) {
+                formData.append('shifts', JSON.stringify(options.shifts));
+            }
+
             formData.append('startTime', options.startTime);
             formData.append('endTime', options.endTime);
-            formData.append('startingShift', options.startingShiftId);
-            formData.append('endingShift', options.endingShiftId);
-            formData.append('shift1StartTime', options.shift1StartTime);
-            formData.append('shift1EndTime', options.shift1EndTime);
-            formData.append('startingShiftPct', String(options.startingShiftPct));
+
+            // Legacy / Compat
+            if (options.startingShiftId) formData.append('startingShift', options.startingShiftId);
+            if (options.endingShiftId) formData.append('endingShift', options.endingShiftId);
+            if (options.shift1StartTime) formData.append('shift1StartTime', options.shift1StartTime);
+            if (options.shift1EndTime) formData.append('shift1EndTime', options.shift1EndTime);
+            if (options.startingShiftPct !== undefined) formData.append('startingShiftPct', String(options.startingShiftPct));
 
             if (options.useShift2 && options.shift2StartTime && options.shift2EndTime) {
                 formData.append('shift2StartTime', options.shift2StartTime);
@@ -295,9 +324,9 @@ export function usePlanData(): UsePlanDataResult {
                 }
             }
             if (options.scheduling) {
-                formData.append('minAssignmentMinutes', String(options.scheduling.minAssignmentMinutes));
-                formData.append('timeStepMinutes', String(options.scheduling.timeStepMinutes));
-                formData.append('transitionGapMs', String(options.scheduling.transitionGapMs));
+                if (options.scheduling.minAssignmentMinutes !== undefined) formData.append('minAssignmentMinutes', String(options.scheduling.minAssignmentMinutes));
+                if (options.scheduling.timeStepMinutes !== undefined) formData.append('timeStepMinutes', String(options.scheduling.timeStepMinutes));
+                if (options.scheduling.transitionGapMs !== undefined) formData.append('transitionGapMs', String(options.scheduling.transitionGapMs));
             }
 
             const res = await fetch(`${API_BASE_URL}/api/v1/worker-tasks/plan-file-multishift-shiftids`, {
@@ -325,11 +354,17 @@ export function usePlanData(): UsePlanDataResult {
         try {
             const formData = new FormData();
             formData.append('file', file);
+
+            // NEW: Dynamic Shifts
+            if (options.shifts) {
+                formData.append('shifts', JSON.stringify(options.shifts));
+            }
+
             formData.append('startTime', options.startTime);
             formData.append('endTime', options.endTime);
-            formData.append('shift1StartTime', options.shift1StartTime);
-            formData.append('shift1EndTime', options.shift1EndTime);
-            formData.append('startingShiftPct', String(options.startingShiftPct));
+            if (options.shift1StartTime) formData.append('shift1StartTime', options.shift1StartTime);
+            if (options.shift1EndTime) formData.append('shift1EndTime', options.shift1EndTime);
+            if (options.startingShiftPct !== undefined) formData.append('startingShiftPct', String(options.startingShiftPct));
 
             if (options.useShift2 && options.shift2StartTime && options.shift2EndTime) {
                 formData.append('shift2StartTime', options.shift2StartTime);
@@ -339,7 +374,7 @@ export function usePlanData(): UsePlanDataResult {
                 }
             }
 
-            const res = await fetch(`${API_BASE_URL}/api/v1/worker-tasks/plan-file-multishift-export`, {
+            const res = await fetch(`${API_BASE_URL}/api/v1/worker-tasks/export-multishift-file`, { // Validated endpoint name
                 method: 'POST',
                 body: formData
             });

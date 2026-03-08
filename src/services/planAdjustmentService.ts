@@ -10,7 +10,8 @@ import {
     UpdatedWorkerTask,
     ImpactedTask,
     AdjustPlanSimpleRequest,
-    SchedulingConfig
+    SchedulingConfig,
+    TaskInterruptionWindow
 } from '../types';
 import { getPlanWithSnapshot } from '../models/planModel';
 import { resolveSchedulingConfig } from '../utils/schedulingConfig';
@@ -65,7 +66,9 @@ export class PlanAdjustmentService {
         currentAssignments: CurrentAssignment[],
         preferences: AdjustPlanPreferences = {},
         originalAssignments: WorkerTask[] = [],
-        scheduling?: SchedulingConfig
+        scheduling?: SchedulingConfig,
+        enforceDepartmentMatch?: boolean,
+        taskInterruptionWindows?: TaskInterruptionWindow[]
     ): WorkerTask[] {
         const startTime = new Date(currentTimeStr).getTime();
         const penalty = preferences.reassignmentPenalty ?? 500; // Default 500
@@ -134,6 +137,26 @@ export class PlanAdjustmentService {
                 return undefined;
             }
             return lock;
+        };
+
+        // Build task interruption lookup for time-window enforcement
+        const interruptionsByTask = new Map<string, Array<{ startMs: number; endMs: number; maxWorkers: number }>>();
+        if (taskInterruptionWindows) {
+            for (const iw of taskInterruptionWindows) {
+                const windows = interruptionsByTask.get(iw.taskId) || [];
+                windows.push({
+                    startMs: new Date(iw.startDate).getTime(),
+                    endMs: iw.endDate ? new Date(iw.endDate).getTime() : Number.MAX_SAFE_INTEGER,
+                    maxWorkers: iw.maxWorkersDuringInterruption ?? 0
+                });
+                interruptionsByTask.set(iw.taskId, windows);
+            }
+        }
+        const getMaxWorkersDuringInterruption = (taskId: string, timeMs: number): number | null => {
+            const windows = interruptionsByTask.get(taskId);
+            if (!windows) return null;
+            const active = windows.find(w => timeMs >= w.startMs && timeMs < w.endMs);
+            return active !== undefined ? active.maxWorkers : null;
         };
 
         // Simulation Loop
@@ -260,18 +283,37 @@ export class PlanAdjustmentService {
                         continue;
                     }
                 }
-                const maxW = task.maxWorkers || 1;
+                // Check task interruption windows
+                const interruptionMax = getMaxWorkersDuringInterruption(task.taskId, simulationTime);
+                if (interruptionMax !== null && interruptionMax === 0) continue; // Fully blocked
+
+                const maxW = interruptionMax !== null
+                    ? Math.min(task.maxWorkers || 1, interruptionMax)
+                    : (task.maxWorkers || 1);
                 let assignedCount = 0;
 
                 const candidates = availableWorkersForStep.filter(w => {
                     if (assignedWorkersInStep.has(w.workerId)) return false;
                     const lock = getActiveLock(w.workerId, simulationTime);
                     if (lock && lock.taskId !== task.taskId) return false;
+                    // Department Hard Constraint
+                    if (enforceDepartmentMatch && task.departmentId && w.departmentId) {
+                        if (task.departmentId !== w.departmentId) return false;
+                    }
                     return true;
                 });
 
                 const scoredCandidates = candidates.map(w => {
                     let score = 1000;
+
+                    // Department Match Scoring (soft signal)
+                    if (w.departmentId && task.departmentId) {
+                        if (w.departmentId === task.departmentId) {
+                            score += 200; // Same-department bonus
+                        } else if (!enforceDepartmentMatch) {
+                            score -= 100; // Cross-department penalty (soft mode only)
+                        }
+                    }
 
                     const lock = getActiveLock(w.workerId, simulationTime);
                     if (lock && lock.taskId === task.taskId) {
@@ -741,7 +783,9 @@ export class PlanAdjustmentService {
                 [], // No "current assignments" for orphans (they are new)
                 request.preferences,
                 [], // No original assignments for orphans
-                request.scheduling
+                request.scheduling,
+                request.enforceDepartmentMatch,
+                request.taskInterruptionWindows
             );
 
             newAssignments.push(...orphanAssignments);

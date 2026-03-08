@@ -8,8 +8,25 @@ import {
     MultiShiftPlanResponse
 } from '../types';
 import { MultiShiftPlanningService } from './multiShiftPlanningService';
+import { LaborEstimationService } from './laborEstimationService';
 
 // --- External Input Interfaces (matching user spec) ---
+
+export interface SimulationOptions {
+    startTime?: string;
+    endTime?: string;
+    shift1StartTime?: string;
+    shift1EndTime?: string;
+    shift2StartTime?: string;
+    shift2EndTime?: string;
+    useShift2?: boolean;
+    startingShiftPct?: number; // 0.0 - 1.0
+    endingShiftPct?: number;
+    startingShiftId?: string;
+    endingShiftId?: string;
+    limit?: number; // Limit number of tasks for preview
+    // ... other frontend options
+}
 
 export interface ExternalSchedulingInput {
     startDate: string; // ISO String
@@ -23,6 +40,8 @@ export interface ExternalWorker {
     id: string;
     name: string;
     shiftPreference?: string;
+    skills?: string[];
+    department?: { id: string; name?: string };
 }
 
 export interface ExternalProductionPlanShift {
@@ -33,6 +52,7 @@ export interface ExternalProductionPlanShift {
         endTime: number;   // TimeInterval
         weekDayOrdinal: number;
     };
+    productionRate?: number; // Optional override for explicit rate control
     // workerTasks and deficitTasks are output, usually empty on input or ignored
 }
 
@@ -45,6 +65,7 @@ export interface ExternalTask {
     // or we default them.
     name?: string;
     estimatedLaborHours?: number;
+    maxWorkers?: number;
     requiredSkills?: string[];
 }
 
@@ -122,6 +143,8 @@ export class SchedulingAdapterService {
             // Defaulting duration if missing (User said partial struct, so likely missing in screenshot but present in reality)
             estimatedTotalLaborHours: t.estimatedLaborHours || 2.0,
             estimatedRemainingLaborHours: t.estimatedLaborHours || 2.0,
+            maxWorkers: t.maxWorkers || 2,
+            requiredSkills: t.requiredSkills || [], // Pass skills to algo
             departmentId: t.department.id, // Mapping strict ID
             // The algorithm might need more, but we start here.
         }));
@@ -143,36 +166,36 @@ export class SchedulingAdapterService {
         const totalDuration = s1Duration + s2Duration;
 
         // Default to 1.0 if total duration is 0 (edge case) or only 1 shift
-        const s1Rate = totalDuration > 0 ? (s1Duration / totalDuration) : 1.0;
-        const s2Rate = totalDuration > 0 ? (s2Duration / totalDuration) : 0.0;
-
-        // Ensure strictly sums to 1.0 to satisfy strict validation if s2 exists
-        // (Floating point issues might occur, so we force s2Rate = 1.0 - s1Rate if s2 exists)
-        const finalS1Rate = s2 ? Number(s1Rate.toFixed(4)) : 1.0;
-        const finalS2Rate = s2 ? Number((1.0 - finalS1Rate).toFixed(4)) : 0.0;
-
+        // Use explicit rate from input if available, otherwise calculate from duration
         const internalRequest: MultiShiftPlanRequest = {
-            shift1: {
-                shiftId: s1.shift.id,
-                productionRate: finalS1Rate,
-                shiftInterval: {
-                    start: this.secondsToIso(s1.shift.startTime, input.startDate),
-                    end: this.secondsToIso(s1.shift.endTime, input.startDate)
+            shifts: sortedShifts.map((s, index) => {
+                const sDuration = s.shift.endTime - s.shift.startTime;
+
+                // Rate calculation: Explicit > Proportional > Equal Split (Fallback)
+                let rate = 1.0;
+                if (s.productionRate !== undefined) {
+                    rate = s.productionRate;
+                } else if (totalDuration > 0) {
+                    rate = sDuration / totalDuration;
+                } else {
+                    rate = 1.0 / sortedShifts.length;
                 }
-            },
-            shift2: s2 ? {
-                shiftId: s2.shift.id,
-                productionRate: finalS2Rate,
-                shiftInterval: {
-                    start: this.secondsToIso(s2.shift.startTime, input.startDate),
-                    end: this.secondsToIso(s2.shift.endTime, input.startDate)
-                }
-            } : undefined,
+
+                return {
+                    shiftId: s.shift.id,
+                    productionRate: Number(rate.toFixed(4)),
+                    shiftInterval: {
+                        start: this.secondsToIso(s.shift.startTime, input.startDate),
+                        end: this.secondsToIso(s.shift.endTime, input.startDate)
+                    }
+                };
+            }),
             tasks: mappedTasks,
             workers: input.workers ? input.workers.map(w => ({
                 workerId: w.id,
                 name: w.name,
-                skills: [], // Default to all skills/generic
+                departmentId: w.department?.id || undefined,
+                skills: w.skills || [], // Pass skills or default
                 shiftPreference: w.shiftPreference,
                 availability: { startTime: new Date().toISOString(), endTime: new Date().toISOString() } // Will be overridden by resolver
             })) : [] // fallback to DB fetch if empty
@@ -182,21 +205,26 @@ export class SchedulingAdapterService {
     }
 
 
-    public async simulateFromDB(): Promise<MultiShiftPlanResponse> {
+    public async simulateFromDB(options?: SimulationOptions): Promise<MultiShiftPlanResponse> {
         const { addDays, startOfDay } = require('date-fns');
-        console.log("[Adapter] Running Simulation from DB...");
+        console.log("[Adapter] Running Simulation from DB...", options ? "With Options" : "Defaults");
 
         const prisma = new PrismaClient();
 
         try {
             // 1. Fetch Workers
             const dbWorkers = await prisma.worker.findMany({
-                include: { shift: true }
+                include: { shift: true, workerDepartments: { include: { department: true } } }
             });
             const externalWorkers: ExternalWorker[] = dbWorkers.map(w => ({
                 id: w.id,
                 name: w.firstName + (w.lastName ? ' ' + w.lastName : ''),
-                shiftPreference: w.shift?.name || undefined
+                shiftPreference: w.shift?.name || undefined,
+                skills: w.rankedSkills || [], // Map skills directly from Enum array
+                department: w.workerDepartments?.[0]?.department ? {
+                    id: w.workerDepartments[0].department.id,
+                    name: w.workerDepartments[0].department.name || undefined
+                } : undefined
             }));
 
             // 2. Fetch Active Tasks (Travelers not shipped, with open tasks)
@@ -204,10 +232,19 @@ export class SchedulingAdapterService {
             // Simplified: Fetch active travelers and their tasks.
             const travelers = await prisma.traveler.findMany({
                 where: { isShipped: false },
+                take: options?.limit, // Apply limit if provided
                 include: {
                     tasks: {
                         where: { leadStatus: 'pending' }, // Only pending tasks
-                        include: { taskTemplate: { include: { department: true } } }
+                        take: options?.limit, // Limit tasks inside traveler too!
+                        include: {
+                            taskTemplate: {
+                                include: {
+                                    department: true,
+                                    timeStudies: { take: 1, orderBy: { date: 'desc' } }
+                                }
+                            }
+                        }
                     },
                     moduleProfile: true
                 }
@@ -227,7 +264,9 @@ export class SchedulingAdapterService {
                         department: { id: task.taskTemplate.departmentId },
                         traveler: { id: t.id },
                         name: `${task.taskTemplate.name} - ${t.moduleProfile?.name || 'Unit'}`,
-                        estimatedLaborHours: 4.0
+                        estimatedLaborHours: task.taskTemplate.timeStudies?.[0]?.clockTime || 4.0,
+                        maxWorkers: task.taskTemplate.maxWorkers || 2,
+                        requiredSkills: task.taskTemplate.rankedSkills
                     });
                 }
             }
@@ -239,20 +278,91 @@ export class SchedulingAdapterService {
                 return this.simulate();
             }
 
-            // 3. Generate Shifts
+            // 3. Generate Shifts (from Production Plan if available)
             const now = new Date();
             const shouldUseTomorrow = now.getHours() >= 7;
             const startDate = shouldUseTomorrow ? addDays(startOfDay(now), 1) : startOfDay(now);
             const shifts: ExternalProductionPlanShift[] = [];
 
-            shifts.push({
-                id: `shift-1`,
-                shift: { id: `shift-1`, startTime: 7 * 3600, endTime: 15 * 3600, weekDayOrdinal: startDate.getDay() || 7 }
-            });
-            shifts.push({
-                id: `shift-2`,
-                shift: { id: `shift-2`, startTime: 15 * 3600, endTime: 23 * 3600, weekDayOrdinal: startDate.getDay() || 7 }
-            });
+            // Attempt to fetch relevant Production Plan (Get Latest Active)
+            // Only if NO override options provided
+            const plan = !options?.shift1StartTime ? await prisma.productionPlan.findFirst({
+                include: { productionPlanShifts: { include: { shift: true } } },
+                orderBy: { startDate: 'desc' }
+            }) : null;
+
+            if (options?.shift1StartTime) {
+                console.log("[Adapter] Using Shifts from Options override.");
+                // Option-based Layout (User selected manual times/rates)
+
+                // Helper to parse ISO time to seconds from midnight
+                const isoToSeconds = (iso: string) => {
+                    const d = new Date(iso);
+                    return d.getUTCHours() * 3600 + d.getUTCMinutes() * 60;
+                };
+
+                const s1Start = isoToSeconds(options.shift1StartTime);
+                const s1End = isoToSeconds(options.shift1EndTime!);
+
+                shifts.push({
+                    id: options.startingShiftId || 'shift-1',
+                    shift: {
+                        id: options.startingShiftId || 'shift-1',
+                        startTime: s1Start,
+                        endTime: s1End,
+                        weekDayOrdinal: startDate.getDay() || 7
+                    },
+                    productionRate: options.startingShiftPct
+                });
+
+                if (options.useShift2 && options.shift2StartTime && options.shift2EndTime) {
+                    const s2Start = isoToSeconds(options.shift2StartTime);
+                    const s2End = isoToSeconds(options.shift2EndTime);
+                    shifts.push({
+                        id: options.endingShiftId || 'shift-2',
+                        shift: {
+                            id: options.endingShiftId || 'shift-2',
+                            startTime: s2Start,
+                            endTime: s2End,
+                            weekDayOrdinal: startDate.getDay() || 7
+                        },
+                        productionRate: options.endingShiftPct
+                    });
+                }
+
+                // TODO: If we want to support N shifts from options, we need to change options structure
+                // For now, we stick to 2 shifts max from the "Quick Simulation" UI options, 
+                // but the backend supports N.
+            } else if (plan && plan.productionPlanShifts.length > 0) {
+                console.log(`[Adapter] Found Plan ${plan.id} for simulation.`);
+                for (const pps of plan.productionPlanShifts) {
+                    // Convert DB Shift Time (1970-01-01) to seconds from midnight
+                    const sTime = pps.shift.startTime ? new Date(pps.shift.startTime) : new Date('1970-01-01T07:00:00Z');
+                    const eTime = pps.shift.endTime ? new Date(pps.shift.endTime) : new Date('1970-01-01T15:00:00Z');
+                    const startSeconds = sTime.getUTCHours() * 3600 + sTime.getUTCMinutes() * 60;
+                    const endSeconds = eTime.getUTCHours() * 3600 + eTime.getUTCMinutes() * 60;
+
+                    shifts.push({
+                        id: pps.id,
+                        shift: {
+                            id: pps.shift.id,
+                            startTime: startSeconds,
+                            endTime: endSeconds,
+                            weekDayOrdinal: startDate.getDay() || 7 // Assuming strictly aligning to sim day
+                        }
+                    });
+                }
+            } else {
+                console.warn("[Adapter] No Production Plan found covering today. Falling back to default shifts.");
+                shifts.push({
+                    id: `shift-1`,
+                    shift: { id: `shift-1`, startTime: 7 * 3600, endTime: 15 * 3600, weekDayOrdinal: startDate.getDay() || 7 }
+                });
+                shifts.push({
+                    id: `shift-2`,
+                    shift: { id: `shift-2`, startTime: 15 * 3600, endTime: 23 * 3600, weekDayOrdinal: startDate.getDay() || 7 }
+                });
+            }
 
             // 4. Run
             const input: ExternalSchedulingInput = {
@@ -267,21 +377,164 @@ export class SchedulingAdapterService {
 
             return {
                 ...result,
+                workers: input.workers!.map(w => ({
+                    id: w.id,
+                    name: w.name,
+                    shiftPreference: w.shiftPreference,
+                    department: w.department
+                })),
                 tasks: input.tasks.map(t => ({
-                    taskId: t.id,
+                    id: t.id,
+                    department: t.department,
+                    traveler: t.traveler,
                     name: t.name,
                     estimatedTotalLaborHours: t.estimatedLaborHours,
                     estimatedRemainingLaborHours: t.estimatedLaborHours
-                })),
-                workers: input.workers!.map(w => ({
-                    workerId: w.id,
-                    name: w.name,
-                    shiftPreference: w.shiftPreference
                 }))
             } as any;
 
         } catch (e) {
             console.error("DB Simulation Error", e);
+            throw e;
+        } finally {
+            await prisma.$disconnect();
+        }
+    }
+
+    public async simulateMixed(externalTasks: ExternalTask[], externalShifts?: ExternalProductionPlanShift[], options?: SimulationOptions): Promise<MultiShiftPlanResponse> {
+        const { addDays, startOfDay } = require('date-fns');
+        console.log("[Adapter] Running Mixed Simulation...", options ? "With Options" : "Defaults");
+
+        const prisma = new PrismaClient();
+
+        try {
+            // 1. Fetch Workers (Same as simulateFromDB)
+            const dbWorkers = await prisma.worker.findMany({
+                include: { shift: true, workerDepartments: { include: { department: true } } }
+            });
+            const externalWorkers: ExternalWorker[] = dbWorkers.map(w => ({
+                id: w.id,
+                name: w.firstName + (w.lastName ? ' ' + w.lastName : ''),
+                shiftPreference: w.shift?.name || undefined,
+                skills: w.rankedSkills || [],
+                department: w.workerDepartments?.[0]?.department ? {
+                    id: w.workerDepartments[0].department.id,
+                    name: w.workerDepartments[0].department.name || undefined
+                } : undefined
+            }));
+
+            // 2. Use Provided Tasks
+            if (!externalTasks || externalTasks.length === 0) {
+                console.warn("[Adapter] No tasks provided in body. Falling back to mocks.");
+                return this.simulate();
+            }
+
+            console.log(`[Adapter] Using ${externalTasks.length} provided tasks and ${externalWorkers.length} DB workers.`);
+
+            // 2b. Estimate labor hours for tasks that don't have them
+            const tasksNeedingEstimate = externalTasks.filter(t => !t.estimatedLaborHours || t.estimatedLaborHours <= 0);
+            if (tasksNeedingEstimate.length > 0) {
+                console.log(`[Adapter] ${tasksNeedingEstimate.length} tasks need labor estimation...`);
+                const laborService = new LaborEstimationService(prisma);
+                const estimates = await laborService.estimateLaborHours(tasksNeedingEstimate.map(t => t.id));
+                for (const task of externalTasks) {
+                    if (!task.estimatedLaborHours || task.estimatedLaborHours <= 0) {
+                        task.estimatedLaborHours = estimates.get(task.id) || 1.0;
+                    }
+                }
+            }
+
+            // 3. Resolve Shifts
+            // Priority: External Shifts > Options > Default
+            const now = new Date();
+            const shouldUseTomorrow = now.getHours() >= 7;
+            const startDate = shouldUseTomorrow ? addDays(startOfDay(now), 1) : startOfDay(now);
+
+            const shifts: ExternalProductionPlanShift[] = [];
+
+            if (externalShifts && externalShifts.length > 0) {
+                console.log("[Adapter] Using provided shifts.");
+                shifts.push(...externalShifts);
+            } else if (options?.shift1StartTime) {
+                console.log("[Adapter] Using Shifts from Options override.");
+                // Option-based Layout (User selected manual times/rates)
+                // Helper to parse ISO time to seconds from midnight
+                const isoToSeconds = (iso: string) => {
+                    const d = new Date(iso);
+                    return d.getUTCHours() * 3600 + d.getUTCMinutes() * 60;
+                };
+
+                const s1Start = isoToSeconds(options.shift1StartTime);
+                const s1End = isoToSeconds(options.shift1EndTime!);
+
+                shifts.push({
+                    id: options.startingShiftId || 'shift-1',
+                    shift: {
+                        id: options.startingShiftId || 'shift-1',
+                        startTime: s1Start,
+                        endTime: s1End,
+                        weekDayOrdinal: startDate.getDay() || 7
+                    },
+                    productionRate: options.startingShiftPct
+                });
+
+                if (options.useShift2 && options.shift2StartTime && options.shift2EndTime) {
+                    const s2Start = isoToSeconds(options.shift2StartTime);
+                    const s2End = isoToSeconds(options.shift2EndTime);
+                    shifts.push({
+                        id: options.endingShiftId || 'shift-2',
+                        shift: {
+                            id: options.endingShiftId || 'shift-2',
+                            startTime: s2Start,
+                            endTime: s2End,
+                            weekDayOrdinal: startDate.getDay() || 7
+                        },
+                        productionRate: options.endingShiftPct
+                    });
+                }
+            } else {
+                console.warn("[Adapter] No Shifts provided. Falling back to default shifts.");
+                shifts.push({
+                    id: `shift-1`,
+                    shift: { id: `shift-1`, startTime: 7 * 3600, endTime: 15 * 3600, weekDayOrdinal: startDate.getDay() || 7 }
+                });
+                shifts.push({
+                    id: `shift-2`,
+                    shift: { id: `shift-2`, startTime: 15 * 3600, endTime: 23 * 3600, weekDayOrdinal: startDate.getDay() || 7 }
+                });
+            }
+
+            // 4. Run
+            const input: ExternalSchedulingInput = {
+                startDate: startDate.toISOString(),
+                endDate: addDays(startDate, 1).toISOString(),
+                shifts: shifts,
+                tasks: externalTasks, // Use passed tasks
+                workers: externalWorkers // Use DB workers
+            };
+
+            const result = await this.run(input);
+
+            return {
+                ...result,
+                workers: input.workers!.map(w => ({
+                    id: w.id,
+                    name: w.name,
+                    shiftPreference: w.shiftPreference,
+                    department: w.department
+                })),
+                tasks: input.tasks.map(t => ({
+                    id: t.id,
+                    department: t.department,
+                    traveler: t.traveler,
+                    name: t.name,
+                    estimatedTotalLaborHours: t.estimatedLaborHours,
+                    estimatedRemainingLaborHours: t.estimatedLaborHours
+                }))
+            } as any;
+
+        } catch (e) {
+            console.error("Mixed Simulation Error", e);
             throw e;
         } finally {
             await prisma.$disconnect();
@@ -402,6 +655,7 @@ export class SchedulingAdapterService {
             ...result,
             tasks: input.tasks.map(t => ({
                 taskId: t.id,
+                departmentId: t.department.id, // Pass departmentId to frontend
                 name: t.name,
                 estimatedTotalLaborHours: t.estimatedLaborHours,
                 estimatedRemainingLaborHours: t.estimatedLaborHours
@@ -409,6 +663,7 @@ export class SchedulingAdapterService {
             workers: input.workers!.map(w => ({
                 workerId: w.id,
                 name: w.name,
+                departmentId: w.department?.id || undefined,
                 shiftPreference: w.shiftPreference
             }))
         } as any; // Cast to bypass strict MultiShiftPlanResponse which lacks tasks/workers

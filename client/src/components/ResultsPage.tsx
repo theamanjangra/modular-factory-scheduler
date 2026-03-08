@@ -6,7 +6,7 @@ import type { AdjustmentResult } from '../types';
 import PlanAdjustmentPanel from './PlanAdjustmentPanel';
 import { formatInTimeZone } from 'date-fns-tz';
 import { FACTORY_TIMEZONE, timeToIso, getTimezoneAbbr } from '../utils/timezone';
-import { MasterDataSelectors } from './MasterDataSelectors';
+import { MasterDataSelectors, type ShiftConfig } from './MasterDataSelectors';
 
 /**
  * Calculate dynamic shift dates based on current time IN FACTORY TIMEZONE.
@@ -45,27 +45,55 @@ const getShiftDates = () => {
 
 export const ResultsPage = () => {
     const { data, loading, error, runMultiShift, exportMultiShift, adjustPlan, runSimulation } = usePlanData();
-    const [shift1Start, setShift1Start] = useState('07:00');
-    const [shift1End, setShift1End] = useState('13:00');
-    const [useShift2, setUseShift2] = useState(true);
-    const [shift2Start, setShift2Start] = useState('13:00');
-    const [shift2End, setShift2End] = useState('17:00');
-    const [startingShiftPct, setStartingShiftPct] = useState(0.75);
-    const [endingShiftPct, setEndingShiftPct] = useState(0.25);
+    // NEW: Dynamic Shift Configuration (Array-based)
+    const [shiftsConfig, setShiftsConfig] = useState<ShiftConfig[]>([
+        {
+            id: 'shift-1',
+            dbShiftId: '',
+            name: 'Shift 1',
+            date: new Date().toISOString().split('T')[0], // Default to today
+            startTime: '07:00',
+            endTime: '15:00',
+            productionRate: 0.75
+        }
+    ]);
+
     const [minAssignmentMinutes, setMinAssignmentMinutes] = useState<30 | 60 | 90>(30);
     const [timeStepMinutes, setTimeStepMinutes] = useState(5);
     const [transitionGapMs, setTransitionGapMs] = useState(0);
     const [adjustmentResult, setAdjustmentResult] = useState<AdjustmentResult | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // NEW: JSON Preview Upload State
+    const jsonFileInputRef = useRef<HTMLInputElement>(null);
+    const [localJsonData, setLocalJsonData] = useState<any>(null);
+
     // NEW: DB Selections State
     const [dbSelections, setDbSelections] = useState<{
-        shift1Id?: string;
-        shift2Id?: string;
         departmentId?: string;
         moduleProfileId?: string;
         travelerTemplateId?: string;
+        shift1Id?: string; // Legacy/Compat helper
+        shift2Id?: string; // Legacy/Compat helper
     }>({});
+
+    // Initialize shift dates on mount/re-calc
+    useEffect(() => {
+        const { shift1Date, shift2Date } = getShiftDates();
+        setShiftsConfig(prev => {
+            if (prev.length === 0) return prev;
+            // Only auto-update if they are "default" looking?
+            // Or just update the first two if they are generic shift-1/shift-2?
+            const next = [...prev];
+            if (next[0] && next[0].id === 'shift-1' && next[0].dbShiftId === '') {
+                next[0].date = shift1Date;
+            }
+            if (next.length > 1 && next[1].id === 'shift-2' && next[1].dbShiftId === '') {
+                next[1].date = shift2Date;
+            }
+            return next;
+        });
+    }, []);
 
     const schedulingConfig: SchedulingConfig = {
         minAssignmentMinutes,
@@ -98,6 +126,54 @@ export const ResultsPage = () => {
         return { startIso: new Date(startMs).toISOString(), endIso: new Date(endMs).toISOString() };
     }, [data]);
 
+    // NEW: Filter Data by Department
+    const filteredData = useMemo(() => {
+        if (!data) return null;
+        if (!dbSelections.departmentId) return data;
+
+        // 1. Identify tasks belonging to the selected department
+        console.log('DEBUG: Filtering for Dept ID:', dbSelections.departmentId);
+        const departmentTaskIds = new Set<string>();
+        const targetDeptId = (dbSelections.departmentId || '').trim().toLowerCase().replace(/-/g, '');
+
+        const filteredTasks = (data.tasks || []).filter((t, idx) => {
+            if (!t.departmentId) return false;
+            const tDeptId = t.departmentId.trim().toLowerCase().replace(/-/g, '');
+
+            if (idx === 0) {
+                console.log('DEBUG: First Task Structure:', JSON.stringify(t));
+                console.log(`DEBUG: Normalized Comparison: '${tDeptId}' === '${targetDeptId}' is ${tDeptId === targetDeptId}`);
+            }
+
+            if (tDeptId === targetDeptId) {
+                departmentTaskIds.add(t.taskId);
+                return true;
+            }
+            return false;
+        });
+
+        console.log(`DEBUG: Found ${filteredTasks.length} tasks for dept. IDs:`, Array.from(departmentTaskIds));
+
+        // 2. Filter assignments to only include those tasks
+        const filteredAssignments = (data.assignments || []).filter(a => {
+            // Always keep comments/markers
+            if (a.type === 'comment') return true;
+            // If it's a task assignment, check if it's in the allowed set
+            if (a.taskId) {
+                return departmentTaskIds.has(a.taskId);
+            }
+            return false;
+        });
+
+        console.log(`DEBUG: Filtered assignments: ${filteredAssignments.length} / ${data.assignments?.length}`);
+
+        return {
+            ...data,
+            tasks: filteredTasks,
+            assignments: filteredAssignments
+        };
+    }, [data, dbSelections.departmentId]);
+
     const handleAdjustPlan = async (
         updates: { taskId: string; laborHoursRemaining: number }[],
         currentTimeOverride?: string,
@@ -122,22 +198,46 @@ export const ResultsPage = () => {
         }
 
         setAdjustmentResult(null); // Clear previous adjustment on new run
-        const { shift1Date, shift2Date } = shiftDates;
+
         // Build wall-clock ISO (no timezone conversion; matches backend expectations).
         const toWallClockIso = (hhmm: string, date: string) => `${date}T${hhmm.padStart(5, '0')}:00.000Z`;
 
-        const options: MultiShiftOptions = {
-            startTime: toWallClockIso(shift1Start, shift1Date),
-            endTime: useShift2 ? toWallClockIso(shift2End, shift2Date) : toWallClockIso(shift1End, shift1Date),
-            shift1StartTime: toWallClockIso(shift1Start, shift1Date),
-            shift1EndTime: toWallClockIso(shift1End, shift1Date),
-            useShift2,
-            shift2StartTime: useShift2 ? toWallClockIso(shift2Start, shift2Date) : undefined,
-            shift2EndTime: useShift2 ? toWallClockIso(shift2End, shift2Date) : undefined,
-            startingShiftPct,
-            endingShiftPct: useShift2 ? endingShiftPct : undefined,
-            startingShiftId: 'shift-1',
-            endingShiftId: useShift2 ? 'shift-2' : 'shift-1',
+        // Sort shifts by time?
+        const sortedShifts = [...shiftsConfig].sort((a, b) =>
+            new Date(`${a.date}T${a.startTime}`).getTime() - new Date(`${b.date}T${b.startTime}`).getTime()
+        );
+
+        if (sortedShifts.length === 0) {
+            alert("Please configure at least one shift.");
+            return;
+        }
+
+        const firstShift = sortedShifts[0];
+        const lastShift = sortedShifts[sortedShifts.length - 1];
+
+        // Construct dynamic options
+        // We might need to extend MultiShiftOptions interface in `usePlanData` if it strictly expects shift1/shift2
+        // For NOW, we map the first 2 shifts to shift1/shift2 fields to maintain compatibility 
+        // with the EXISTING `usePlanData` hook signature, 
+        // UNTIL we update `usePlanData` to take the array directly.
+        // TODO: Update `usePlanData` to accept `shifts: ShiftConfig[]`.
+
+        // But wait, the BACKEND already accepts `shifts` array? 
+        // Yes, via `MultiShiftFilePlanRequest`. 
+        // We need to modify `usePlanData` to pass this array.
+        // Let's assume `usePlanData` updates are part of this refactor.
+        // For this step, I will construct the object as if `usePlanData` handles it, 
+        // and then I will go update `usePlanData`.
+
+        const options: any = { // Cast to any temporarily or update interface
+            shifts: sortedShifts.map(s => ({
+                id: s.id,
+                startTime: toWallClockIso(s.startTime, s.date),
+                endTime: toWallClockIso(s.endTime, s.date),
+                productionRate: s.productionRate
+            })),
+            startTime: toWallClockIso(firstShift.startTime, firstShift.date),
+            endTime: toWallClockIso(lastShift.endTime, lastShift.date), // Overall window
             scheduling: schedulingConfig
         };
 
@@ -146,26 +246,193 @@ export const ResultsPage = () => {
 
     const handleExportMultiShift = () => {
         if (!fileInputRef.current?.files?.[0]) return;
-        const { shift1Date, shift2Date } = shiftDates;
-        // Build wall-clock ISO (no timezone conversion; matches backend expectations).
-        const toWallClockIso = (hhmm: string, date: string) => `${date}T${hhmm.padStart(5, '0')}:00.000Z`;
 
-        const options = {
-            startTime: toWallClockIso(shift1Start, shift1Date),
-            endTime: useShift2 ? toWallClockIso(shift2End, shift2Date) : toWallClockIso(shift1End, shift1Date),
-            shift1StartTime: toWallClockIso(shift1Start, shift1Date),
-            shift1EndTime: toWallClockIso(shift1End, shift1Date),
-            useShift2,
-            shift2StartTime: useShift2 ? toWallClockIso(shift2Start, shift2Date) : undefined,
-            shift2EndTime: useShift2 ? toWallClockIso(shift2End, shift2Date) : undefined,
-            startingShiftPct,
-            endingShiftPct: useShift2 ? endingShiftPct : undefined,
-            startingShiftId: 'shift-1',
-            endingShiftId: useShift2 ? 'shift-2' : 'shift-1',
+        const toWallClockIso = (hhmm: string, date: string) => `${date}T${hhmm.padStart(5, '0')}:00.000Z`;
+        const sortedShifts = [...shiftsConfig].sort((a, b) =>
+            new Date(`${a.date}T${a.startTime}`).getTime() - new Date(`${b.date}T${b.startTime}`).getTime()
+        );
+        const firstShift = sortedShifts[0];
+        const lastShift = sortedShifts[sortedShifts.length - 1];
+
+        const options: any = {
+            shifts: sortedShifts.map(s => ({
+                id: s.id,
+                startTime: toWallClockIso(s.startTime, s.date),
+                endTime: toWallClockIso(s.endTime, s.date),
+                productionRate: s.productionRate
+            })),
+            startTime: toWallClockIso(firstShift.startTime, firstShift.date),
+            endTime: toWallClockIso(lastShift.endTime, lastShift.date),
             scheduling: schedulingConfig
         };
 
         exportMultiShift(fileInputRef.current.files[0], options);
+    };
+
+    const handleUploadJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const text = event.target?.result as string;
+                const json = JSON.parse(text);
+                const debug = json._debug || {};
+
+                // UUID normalizer: workerTasks use "F337B765-A941-..."
+                // but _debug maps use "f337b765a941..." (lowercase, no dashes)
+                const norm = (id: string) => id.toLowerCase().replace(/-/g, '');
+
+                // Short label for task IDs with no human-readable name
+                const shortId = (id: string) => `Task-${id.slice(0, 6).toUpperCase()}`;
+
+                // Build lookup maps — all keyed by normalized ID
+                const taskNameMap = new Map<string, string>();
+                const taskDeptMap = new Map<string, string>();
+                const dbTaskLookup = new Map<string, any>();
+                const workerNameMap = new Map<string, string>();
+
+                // Populate from _debug.taskDepts
+                for (const [k, v] of Object.entries(debug.taskDepts || {})) {
+                    taskDeptMap.set(norm(k), v as string);
+                }
+
+                // Populate from _debug.workers
+                if (Array.isArray(debug.workers)) {
+                    debug.workers.forEach((w: any) => {
+                        if (w.id || w.workerId) {
+                            const nid = norm(w.id || w.workerId);
+                            workerNameMap.set(nid, w.name || w.id || w.workerId);
+                        }
+                    });
+                }
+
+                // Populate from _debug.availableDbTasks
+                if (Array.isArray(debug.availableDbTasks)) {
+                    debug.availableDbTasks.forEach((t: any) => {
+                        const nid = norm(t.id);
+                        taskNameMap.set(nid, t.name || t.id);
+                        dbTaskLookup.set(nid, t);
+                        if (t.deptId && !taskDeptMap.has(nid)) {
+                            taskDeptMap.set(nid, t.deptId);
+                        }
+                    });
+                }
+
+                // Step 1: Flatten workerTasks from all shifts into assignments,
+                // and collect deficitTasks from each shift.
+                let assignments: any[] = [];
+                const workerIdSet = new Set<string>();
+                const assignmentTaskIds = new Set<string>();
+                const deficitMap = new Map<string, number>(); // normalized taskId → deficit hours
+
+                const shifts = json.productionPlanShifts || json.shifts || [];
+                shifts.forEach((shift: any) => {
+                    // Collect workerTasks
+                    if (shift.workerTasks && Array.isArray(shift.workerTasks)) {
+                        shift.workerTasks.forEach((wt: any) => {
+                            workerIdSet.add(wt.workerId);
+                            assignmentTaskIds.add(wt.taskId);
+                            assignments.push({
+                                id: wt.id,
+                                workerId: wt.workerId,
+                                taskId: wt.taskId,
+                                taskName: taskNameMap.get(norm(wt.taskId)) || shortId(wt.taskId),
+                                departmentId: taskDeptMap.get(norm(wt.taskId)),
+                                startDate: wt.startDate,
+                                endDate: wt.endDate,
+                                type: 'assignment' as const,
+                                shiftId: shift.id || shift.shift?.id
+                            });
+                        });
+                    }
+                    // Collect deficitTasks
+                    if (shift.deficitTasks && Array.isArray(shift.deficitTasks)) {
+                        shift.deficitTasks.forEach((dt: any) => {
+                            const nid = norm(dt.taskId);
+                            deficitMap.set(nid, (deficitMap.get(nid) || 0) + (dt.deficitHours || 0));
+                        });
+                    }
+                });
+
+                // Step 2: Compute worked hours per task from assignment durations
+                const workedHoursMap = new Map<string, number>(); // normalized taskId → hours
+                assignments.forEach(a => {
+                    const s = new Date(a.startDate).getTime();
+                    const e = new Date(a.endDate).getTime();
+                    if (isNaN(s) || isNaN(e)) return;
+                    const hrs = (e - s) / (1000 * 60 * 60);
+                    const nid = norm(a.taskId);
+                    workedHoursMap.set(nid, (workedHoursMap.get(nid) || 0) + hrs);
+                });
+
+                // Step 3: Build tasks array using assignment task IDs as canonical
+                // (these match the format used in workerTasks, so Gantt lookups work).
+                // Also include deficit-only tasks that have no assignments.
+                const seenNormIds = new Set<string>();
+                const canonicalTaskIds: string[] = [];
+
+                // First: all tasks that have assignments (original format)
+                for (const id of assignmentTaskIds) {
+                    const nid = norm(id);
+                    if (!seenNormIds.has(nid)) {
+                        seenNormIds.add(nid);
+                        canonicalTaskIds.push(id);
+                    }
+                }
+
+                // Note: deficit-only tasks (no assignments) are excluded —
+                // nothing to visualize on the Gantt for them.
+
+                const tasks = json.tasks || canonicalTaskIds.map((id: string) => {
+                    const nid = norm(id);
+                    const dbTask = dbTaskLookup.get(nid);
+                    const limits = debug.taskWorkerLimits?.[nid];
+                    const worked = workedHoursMap.get(nid) || 0;
+                    const deficit = deficitMap.get(nid) || 0;
+                    // Total = worked + deficit. If no deficit, task is fully scheduled.
+                    const totalHours = worked + deficit;
+                    return {
+                        taskId: id,
+                        name: dbTask?.name || taskNameMap.get(nid) || shortId(id),
+                        departmentId: dbTask?.deptId || taskDeptMap.get(nid),
+                        minWorkers: dbTask?.minW ?? limits?.min,
+                        maxWorkers: dbTask?.maxW ?? limits?.max,
+                        estimatedTotalLaborHours: totalHours > 0 ? totalHours : undefined
+                    };
+                });
+
+                // Step 4: Build workers array — short readable labels
+                const sortedWorkerIds = Array.from(workerIdSet).sort();
+                const workers = json.workers || sortedWorkerIds.map((id, idx) => ({
+                    workerId: id,
+                    name: workerNameMap.get(norm(id)) || `Worker ${idx + 1}`,
+                    skills: []
+                }));
+
+                const adaptedData = {
+                    ...json,
+                    version: json.version || 'json-preview',
+                    assignments: assignments.length ? assignments : (json.assignments || []),
+                    tasks,
+                    workers
+                };
+
+                setLocalJsonData(adaptedData);
+                console.log("JSON Preview loaded:", {
+                    assignments: assignments.length,
+                    tasks: tasks.length,
+                    workers: workers.length,
+                    shifts: shifts.length,
+                    deficits: deficitMap.size
+                });
+            } catch (err) {
+                console.error("Failed to parse JSON preview:", err);
+                alert("Invalid JSON file uploaded. Check console for details.");
+            }
+        };
+        reader.readAsText(file);
     };
 
     return (
@@ -180,14 +447,21 @@ export const ResultsPage = () => {
                         </div>
                         <div>
                             <h1 className="text-lg font-bold text-gray-900 tracking-tight leading-none">Minimalist Planner</h1>
-                            <span className="text-xs font-medium text-gray-500">Version 2.2</span>
+                            <span className="text-xs font-medium text-gray-500">Version 2.3</span>
                         </div>
                     </div>
 
                     <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block"></div>
 
                     {/* NEW: DB Selectors */}
-                    <MasterDataSelectors onSelectionChange={setDbSelections} />
+                    <MasterDataSelectors
+                        shiftsConfig={shiftsConfig}
+                        onShiftsConfigChange={setShiftsConfig}
+                        departmentId={dbSelections.departmentId}
+                        moduleProfileId={dbSelections.moduleProfileId}
+                        travelerTemplateId={dbSelections.travelerTemplateId}
+                        onOtherSelectionChange={(sel) => setDbSelections(prev => ({ ...prev, ...sel }))}
+                    />
 
                     <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block"></div>
 
@@ -201,47 +475,18 @@ export const ResultsPage = () => {
                         />
                     </div>
 
-                    {/* Multi-Shift Configuration */}
-                    <div className="flex items-center gap-3 bg-gray-100/50 px-4 py-2 rounded-xl border border-gray-200/50">
-                        <div className="flex flex-col text-xs text-gray-500">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="font-semibold">Multi-Shift Planning</span>
-                                <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-[10px] font-medium">
-                                    <Calendar size={10} />
-                                    <span>{shiftDates.shift1Date}</span>
-                                    {useShift2 && <span>→ {shiftDates.shift2Date}</span>}
-                                </div>
-                                <span className="text-[10px] font-medium text-gray-500">({getTimezoneAbbr()})</span>
-                            </div>
-                            <div className="flex gap-2 items-center mt-1">
-                                <label className="flex items-center gap-1">
-                                    Shift 1
-                                    <input type="time" value={shift1Start} onChange={(e) => setShift1Start(e.target.value)} className="border rounded px-2 py-1 text-xs w-28" />
-                                    <span>-</span>
-                                    <input type="time" value={shift1End} onChange={(e) => setShift1End(e.target.value)} className="border rounded px-2 py-1 text-xs w-28" />
-                                </label>
-                                <label className="flex items-center gap-1">
-                                    Rate
-                                    <input type="number" step="0.05" min="0.5" max="1" value={startingShiftPct} onChange={(e) => setStartingShiftPct(parseFloat(e.target.value))} className="border rounded px-2 py-1 text-xs w-20" />
-                                </label>
-                            </div>
-                            <div className="flex gap-2 items-center mt-1">
-                                <label className="flex items-center gap-2">
-                                    <input type="checkbox" checked={useShift2} onChange={(e) => setUseShift2(e.target.checked)} />
-                                    Use Shift 2
-                                </label>
-                                <label className="flex items-center gap-1">
-                                    <input type="time" value={shift2Start} onChange={(e) => setShift2Start(e.target.value)} disabled={!useShift2} className="border rounded px-2 py-1 text-xs w-28" />
-                                    <span>-</span>
-                                    <input type="time" value={shift2End} onChange={(e) => setShift2End(e.target.value)} disabled={!useShift2} className="border rounded px-2 py-1 text-xs w-28" />
-                                </label>
-                                <label className="flex items-center gap-1">
-                                    Rate
-                                    <input type="number" step="0.05" min="0" max="1" value={endingShiftPct} onChange={(e) => setEndingShiftPct(parseFloat(e.target.value))} disabled={!useShift2} className="border rounded px-2 py-1 text-xs w-20" />
-                                </label>
-                            </div>
-                        </div>
+                    <div className="flex items-center gap-2 bg-indigo-50/50 p-1.5 rounded-xl border border-indigo-100/50 hover:bg-indigo-50 transition-colors">
+                        <Upload size={16} className="text-indigo-400 ml-2" />
+                        <input
+                            ref={jsonFileInputRef}
+                            type="file"
+                            accept=".json"
+                            onChange={handleUploadJson}
+                            className="bg-transparent text-sm text-indigo-600 w-[200px] file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-white file:text-indigo-700 file:shadow-sm hover:file:bg-indigo-50 transition-all focus:outline-none cursor-pointer"
+                        />
                     </div>
+
+
 
                     {/* Scheduling Configuration */}
                     <div className="flex items-center gap-3 bg-gray-100/50 px-4 py-2 rounded-xl border border-gray-200/50">
@@ -307,7 +552,50 @@ export const ResultsPage = () => {
                     </button>
 
                     <button
-                        onClick={() => runSimulation()}
+                        onClick={() => {
+                            // Build wall-clock ISO (no timezone conversion; matches backend expectations).
+                            const toWallClockIso = (hhmm: string, date: string) => `${date}T${hhmm.padStart(5, '0')}:00.000Z`;
+
+                            const sortedShifts = [...shiftsConfig].sort((a, b) =>
+                                new Date(`${a.date}T${a.startTime}`).getTime() - new Date(`${b.date}T${b.startTime}`).getTime()
+                            );
+
+                            if (sortedShifts.length === 0) return;
+
+                            const firstShift = sortedShifts[0];
+                            const lastShift = sortedShifts[sortedShifts.length - 1];
+
+                            // Map to legacy structure where possible, but use new structure primarily
+                            // The backend simulation endpoint needs to support `shifts` array too if we want true fidelity.
+                            // For now, let's map `shifts` array into the options.
+
+                            const options: any = { // Cast to any to bypass strict MultiShiftOptions if it's not updated yet
+                                shifts: sortedShifts.map(s => ({
+                                    id: s.id,
+                                    startTime: toWallClockIso(s.startTime, s.date),
+                                    endTime: toWallClockIso(s.endTime, s.date),
+                                    productionRate: s.productionRate
+                                })),
+                                startTime: toWallClockIso(firstShift.startTime, firstShift.date),
+                                endTime: toWallClockIso(lastShift.endTime, lastShift.date),
+
+                                // Legacy Compat (approximation)
+                                shift1StartTime: toWallClockIso(firstShift.startTime, firstShift.date),
+                                shift1EndTime: toWallClockIso(firstShift.endTime, firstShift.date),
+                                useShift2: sortedShifts.length > 1,
+                                startingShiftPct: firstShift.productionRate,
+                                endingShiftPct: lastShift.productionRate,
+
+                                scheduling: schedulingConfig
+                            };
+                            if (sortedShifts.length > 1) {
+                                options.shift2StartTime = toWallClockIso(sortedShifts[1].startTime, sortedShifts[1].date);
+                                options.shift2EndTime = toWallClockIso(sortedShifts[1].endTime, sortedShifts[1].date);
+                            }
+
+                            runSimulation(options);
+                            runSimulation(options);
+                        }}
                         disabled={loading}
                         className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-indigo-700/10 active:scale-95"
                     >
@@ -334,10 +622,10 @@ export const ResultsPage = () => {
 
 
                 {/* Visualization Area */}
-                {data ? (
+                {localJsonData || filteredData ? (
                     <div className="h-[650px] bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-500">
                         <PlanGanttVisualization
-                            data={data}
+                            data={localJsonData || filteredData}
                             highlightedTaskIds={adjustmentResult ? new Set(adjustmentResult.impactedTasks.map(t => t.taskId)) : undefined}
                         />
                     </div>
@@ -351,19 +639,27 @@ export const ResultsPage = () => {
                 )}
 
                 {/* ===== PLAN ADJUSTMENT PANEL ===== */}
-                {data && data.tasks && data.tasks.length > 0 && (
+                {filteredData && filteredData.tasks && filteredData.tasks.length > 0 && (
                     <div className="mt-8 mb-8 bg-white/50 backdrop-blur-sm rounded-2xl p-1 border border-gray-100/50">
                         <PlanAdjustmentPanel
-                            tasks={data.tasks}
-                            workers={data.workers || []}
-                            planId={data.planId}
+                            tasks={filteredData.tasks}
+                            workers={filteredData.workers || []}
+                            planId={filteredData.planId}
                             planStartTime={planWindow?.startIso}
                             onAdjust={handleAdjustPlan}
                             isLoading={loading}
                             // NEW: Pass shift configuration
-                            shift1={{ date: shiftDates.shift1Date, startTime: shift1Start, endTime: shift1End }}
-                            shift2={useShift2 ? { date: shiftDates.shift2Date, startTime: shift2Start, endTime: shift2End } : undefined}
-                            useShift2={useShift2}
+                            shift1={shiftsConfig[0] ? {
+                                date: shiftsConfig[0].date,
+                                startTime: shiftsConfig[0].startTime,
+                                endTime: shiftsConfig[0].endTime
+                            } : undefined}
+                            shift2={shiftsConfig[1] ? {
+                                date: shiftsConfig[1].date,
+                                startTime: shiftsConfig[1].startTime,
+                                endTime: shiftsConfig[1].endTime
+                            } : undefined}
+                            useShift2={shiftsConfig.length > 1}
                         />
                     </div>
                 )}

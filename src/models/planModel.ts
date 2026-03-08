@@ -5,6 +5,7 @@ export interface PlanWithAssignments {
     name: string | null;
     createdAt: Date;
     updatedAt: Date;
+    inputSnapshot?: any;
     assignments: {
         id: string;
         workerId: string;
@@ -17,24 +18,16 @@ export interface PlanWithAssignments {
 
 /** Fetch a plan with all its assignments */
 export const getPlanById = async (planId: string): Promise<PlanWithAssignments | null> => {
-    return prisma.plan.findUnique({
-        where: { id: planId },
-        include: { assignments: { orderBy: { startTime: 'asc' } } }
-    });
+    // Persistent mode - deferred until schema migration adds assignments relation
+    throw new Error('Persistent plan retrieval not yet implemented. Use ephemeral mode (planId = "ephemeral").');
 };
 
 /** Fetch assignments still active at or after a given time */
 export const getActiveAssignments = async (planId: string, afterTime: Date) => {
-    return prisma.workerTaskAssignment.findMany({
-        where: { planId, endTime: { gte: afterTime } },
-        orderBy: { startTime: 'asc' }
-    });
+    throw new Error('Persistent plan retrieval not yet implemented. Use ephemeral mode.');
 };
 
 /** Fetch a plan with all its assignments AND snapshot */
-export const getPlanWithSnapshot = async (planId: string) => {
-    return prisma.plan.findUnique({
-        where: { id: planId },
-        include: { assignments: { orderBy: { startTime: 'asc' } } }
-    });
+export const getPlanWithSnapshot = async (planId: string): Promise<(PlanWithAssignments & { inputSnapshot?: any }) | null> => {
+    throw new Error('Persistent plan retrieval not yet implemented. Use ephemeral mode (planId = "ephemeral").');
 };

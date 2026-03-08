@@ -12,9 +12,13 @@ import workerTasksRouter from './routes/workerTasks';
 import plansRouter from './routes/plans';
 import masterDataRouter from './routes/masterData';
 import schedulingRouter from './routes/scheduling.routes';
+// import syncRouter from './routes/syncRoutes';
 // import { chatRoutes } from "./routes/chatRoutes";
 
 const app = express();
+
+// Trust the Google Cloud Run / Load Balancer proxy so express-rate-limit doesn't throw a 500 error on Forwarded headers
+app.set("trust proxy", 1);
 
 // Apply general rate limiting
 app.use(generalLimiter);
@@ -55,6 +59,7 @@ app.use("/api/v1/worker-tasks", workerTasksRouter);
 app.use("/api/v1/plans", plansRouter);
 app.use("/api/v1/master", masterDataRouter);
 app.use("/api/v1/schedule", schedulingRouter);
+// app.use("/api/v1/sync", syncRouter);
 // app.use("/api/chat", chatRoutes);
 
 // Catch-all: Serve React app for client-side routing (e.g., /cross-dept)

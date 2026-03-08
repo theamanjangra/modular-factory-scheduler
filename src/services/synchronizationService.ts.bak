@@ -1,0 +1,313 @@
+
+import { db } from '../config/firebase';
+import { PrismaClient } from '@prisma/client';
+import { v4 as uuidv4, v5 as uuidv5 } from 'uuid';
+
+const prisma = new PrismaClient();
+const IMPORT_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+
+// Mapping from Firestore 'Skill Letter' to Prism Enum 'Skill'
+const SKILL_NAMES: Record<string, string> = {
+    'A': 'framing',
+    'B': 'finishCarpentry',
+    'C': 'electricalTrim',
+    'V': 'electricalRough',
+    'D': 'plumbing',
+    'E': 'drywallHanging',
+    'F': 'drywallMud',
+    'G': 'texture',
+    'H': 'painting',
+    'I': 'roofing',
+    'J': 'flooring',
+    'K': 'boxMoving',
+    'L': 'cutting',
+    'M': 'hvac'
+};
+
+const VALID_SKILLS = new Set(Object.values(SKILL_NAMES));
+
+function mapSkillLetter(letter: string): string | null {
+    const mapped = SKILL_NAMES[letter];
+    if (mapped && VALID_SKILLS.has(mapped)) return mapped;
+    return null;
+}
+
+export class SynchronizationService {
+
+    /**
+     * Sync Workers from Firestore 'users' collection -> Postgres 'User' & 'Employee'
+     */
+    async syncWorkers() {
+        console.log('🔄 Syncing Workers from Firestore...');
+
+        const snapshot = await db.collection('users').get();
+        if (snapshot.empty) {
+            console.warn('⚠️ No users found in Firestore.');
+            return { count: 0, message: 'No users found' };
+        }
+
+        let syncedCount = 0;
+
+        for (const doc of snapshot.docs) {
+            const data = doc.data();
+            const firebaseUid = doc.id;
+            const email = data.email || `${firebaseUid}@placeholder.com`;
+            const name = data.displayName || data.name || 'Unknown User';
+            const role = (data.role || 'user').toUpperCase();
+
+            // 1. User
+            const nameParts = name.trim().split(' ');
+            const firstName = nameParts[0] || 'Unknown';
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'User';
+
+            await prisma.user.upsert({
+                where: { email }, // using email as unique key if firebaseUserId not set? schema has firebaseUserId
+                update: {
+                    firebaseUserId: firebaseUid,
+                    firstname: firstName,
+                    lastname: lastName,
+                    type: 'office' // Default type? or map role
+                },
+                create: {
+                    firebaseUserId: firebaseUid,
+                    email,
+                    firstname: firstName,
+                    lastname: lastName,
+                    phone: `${firebaseUid}`, // Phone is unique and required... dummy it?
+                    type: 'office'
+                }
+            });
+        }
+
+        // RE-IMPLEMENTING Worker Sync based on import_from_firebase.ts logic
+        console.log('🔄 Syncing Workers table from Firestore...');
+        const workerSnap = await db.collection('workers').get();
+
+        // Ensure defaults
+        const shift1 = await prisma.shift.findFirst();
+        if (!shift1) {
+            console.error('⚠️ No default shift found. Please seed shifts.');
+            return { count: 0, message: 'No default shift found for workers.' };
+        }
+        let station = await prisma.station.findFirst({ where: { name: 'General' } });
+        if (!station) {
+            station = await prisma.station.create({ data: { name: 'General', order: 0 } });
+        }
+
+        for (const doc of workerSnap.docs) {
+            const data = doc.data();
+            const wId = uuidv5(doc.id, IMPORT_NAMESPACE);
+
+            const skills: string[] = [];
+            if (data.rankedSkills && Array.isArray(data.rankedSkills)) {
+                skills.push(...data.rankedSkills.filter((s: string) => VALID_SKILLS.has(s)));
+            }
+
+            await prisma.worker.upsert({
+                where: { id: wId },
+                create: {
+                    id: wId,
+                    firstName: data.firstName || 'Unknown',
+                    lastName: data.lastName || 'Worker',
+                    stationId: station!.id,
+                    shiftId: shift1!.id,
+                    rankedSkills: skills as any
+                },
+                update: {
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    rankedSkills: skills as any
+                }
+            });
+            syncedCount++;
+        }
+
+        console.log(`✅ Synced ${syncedCount} workers.`);
+        return { count: syncedCount, message: 'Workers synced successfully' };
+    }
+
+    /**
+     * Sync Labor Standards
+     */
+    async syncLaborData() {
+        console.log('🔄 Syncing Labor Data from Firestore...');
+
+        // --- Prep: Ensure Defaults ---
+        let station = await prisma.station.findFirst({ where: { name: 'General' } });
+        if (!station) {
+            station = await prisma.station.create({ data: { name: 'General', order: 0 } });
+        }
+
+        // We might need to map department names or create default
+        let defaultDept = await prisma.department.findFirst({ where: { name: 'General' } });
+        if (!defaultDept) {
+            defaultDept = await prisma.department.create({ data: { name: 'General' } });
+        }
+
+        // --- Step 1: Module Attributes ---
+        const maSnap = await db.collection('moduleAttributes').get();
+
+        const attrLookup = new Map<string, string>(); // alias/id -> DB UUID
+
+        for (const doc of maSnap.docs) {
+            const data = doc.data();
+            const dbId = uuidv5(`moduleAttribute:${doc.id}`, IMPORT_NAMESPACE);
+            attrLookup.set(doc.id, dbId);
+            attrLookup.set(`attr_${doc.id}`, dbId);
+            attrLookup.set(`attr_${parseInt(doc.id)}`, dbId);
+
+            await prisma.moduleAttribute.upsert({
+                where: { id: dbId },
+                update: { name: data.name || doc.id },
+                create: { id: dbId, name: data.name || doc.id, moduleAttributeType: 'number' }
+            });
+        }
+
+        // --- Step 2: Module Profiles ---
+        const profiles = await prisma.moduleProfile.findMany(); // Assuming loaded via seed if not synced
+
+        // --- Step 3: Module Profile Attributes ---
+        const mpaSnap = await db.collection('moduleProfileAttributes').get();
+        for (const doc of mpaSnap.docs) {
+            const d = doc.data();
+            const profile = profiles.find(p => p.name && p.name.includes(d.moduleProfileId)) || profiles.find(p => p.name === 'Standard Unit');
+
+            if (profile) {
+                const attrDbId = attrLookup.get(String(d.attributeId));
+                if (attrDbId) {
+                    const uniqueId = uuidv5(`mpa:${profile.id}:${attrDbId}`, IMPORT_NAMESPACE);
+                    await prisma.moduleProfileModuleAttribute.upsert({
+                        where: { id: uniqueId },
+                        update: { value: String(d.value) },
+                        create: {
+                            id: uniqueId,
+                            moduleProfileId: profile.id,
+                            moduleAttributeId: attrDbId,
+                            value: String(d.value)
+                        }
+                    });
+                }
+            }
+        }
+
+        // --- Step 4: Task Templates ---
+        const ttSnap = await db.collection('taskTemplates').get();
+        console.log(`   Fetched ${ttSnap.size} Task Templates`);
+
+        const templateIdMap = new Map<string, string>();
+
+        for (const doc of ttSnap.docs) {
+            const d = doc.data();
+            const dbId = uuidv5(`taskTemplate:${doc.id}`, IMPORT_NAMESPACE);
+            templateIdMap.set(doc.id, dbId);
+
+            // Resolve Dept
+            let deptId = defaultDept!.id;
+            if (d.departmentName) {
+                const found = await prisma.department.findFirst({ where: { name: { equals: d.departmentName, mode: 'insensitive' } } });
+                if (found) deptId = found.id;
+            }
+
+            await prisma.taskTemplate.upsert({
+                where: { id: dbId },
+                update: {
+                    name: d.name,
+                    stationId: station!.id,
+                    departmentId: deptId,
+                    taskType: 'default',
+                    minWorkers: Number(d.minWorkers) || 1,
+                    maxWorkers: Number(d.maxWorkers) || 2,
+                    order: Number(d.order) || 0
+                },
+                create: {
+                    id: dbId,
+                    name: d.name || 'Unknown',
+                    stationId: station!.id,
+                    departmentId: deptId,
+                    taskType: 'default',
+                    minWorkers: Number(d.minWorkers) || 1,
+                    maxWorkers: Number(d.maxWorkers) || 2,
+                    order: Number(d.order) || 0
+                }
+            });
+        }
+
+        // --- Step 5: TTMA ---
+        const ttmaSnap = await db.collection('taskTemplateModuleAttributes').get();
+        for (const doc of ttmaSnap.docs) {
+            const d = doc.data();
+            const templateUUID = templateIdMap.get(d.taskTemplateId);
+            if (!templateUUID) continue;
+
+            const attrUUID = attrLookup.get(d.moduleAttributeId);
+            if (!attrUUID) continue;
+
+            const linkId = uuidv5(`ttma:${d.taskTemplateId}:${d.moduleAttributeId}`, IMPORT_NAMESPACE);
+
+            await prisma.taskTemplateModuleAttribute.upsert({
+                where: { id: linkId },
+                update: {},
+                create: {
+                    id: linkId,
+                    taskTemplateId: templateUUID,
+                    moduleAttributeId: attrUUID
+                }
+            });
+        }
+
+        // --- Step 6: Time Studies ---
+        const tsSnap = await db.collection('timeStudies').get();
+        for (const doc of tsSnap.docs) {
+            const d = doc.data();
+            let templateRefId = '';
+            if (d.task_template && d.task_template.path) {
+                templateRefId = d.task_template.path.split('/').pop();
+            }
+
+            const templateUUID = templateIdMap.get(templateRefId);
+            if (!templateUUID) continue;
+
+            const studyUUID = uuidv5(`timeStudy:${doc.id}`, IMPORT_NAMESPACE);
+
+            await prisma.timeStudy.upsert({
+                where: { id: studyUUID },
+                update: {
+                    taskTemplateId: templateUUID,
+                    notes: d.notes || '',
+                    clockTime: Number(d.observed_time || d.clock_time || 0), // Schema uses clockTime
+                    workerCount: Number(d.worker_count || 1)
+                },
+                create: {
+                    id: studyUUID,
+                    taskTemplateId: templateUUID,
+                    date: new Date(),
+                    notes: d.notes || '',
+                    clockTime: Number(d.observed_time || d.clock_time || 0),
+                    workerCount: Number(d.worker_count || 1)
+                }
+            });
+
+            if (Array.isArray(d.module_attributes)) {
+                for (const attrRaw of d.module_attributes) {
+                    const attrUUID = attrLookup.get(attrRaw) || attrLookup.get(String(attrRaw));
+                    if (attrUUID) {
+                        const linkId = uuidv5(`tsma:${doc.id}:${attrRaw}`, IMPORT_NAMESPACE);
+                        await prisma.timeStudyModuleAttribute.upsert({
+                            where: { id: linkId },
+                            update: { value: '0' },
+                            create: {
+                                id: linkId,
+                                timeStudyId: studyUUID,
+                                moduleAttributeId: attrUUID,
+                                value: '0'
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        console.log('✅ Labor Data Sync Complete.');
+        return { message: 'Labor Data Synced' };
+    }
+}

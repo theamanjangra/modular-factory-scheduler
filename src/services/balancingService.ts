@@ -14,6 +14,11 @@ interface BalanceOptions {
     minAssignmentMinutes?: number;
     alignStartBonus?: number;
     interruptionConstraints?: Map<string, number>; // KAN-468: taskId -> maxWorkers during interruption
+    enforceDepartmentMatch?: boolean; // When true, workers can only work on same-department tasks
+    useCrewCap?: boolean; // When true, limits crew so each worker contributes at least 2× minAssignment
+    preventLateJoiners?: boolean; // When true, don't assign new workers to a task past halfway with an active crew
+    keepCrewTogether?: boolean; // When true, all crew members stay on a task until it's complete
+    workerLocks?: Map<string, string>; // Persistent worker→task locks from planningService (survive seed gaps)
 }
 
 export class BalancingService {
@@ -37,7 +42,7 @@ export class BalancingService {
         currentTime: number,
         stepDurationMs: number,
         allWorkers: Worker[], // PASS ALL WORKERS
-        readyTasks: Array<{ task: Task; remainingHours: number; dependentCount?: number }>,
+        readyTasks: Array<{ task: Task; remainingHours: number; rawRemainingHours?: number; dependentCount?: number }>,
         resourceManager: ResourceManager,
         endTimeLimit: number,
         remainingBudgetMs?: number,
@@ -59,58 +64,49 @@ export class BalancingService {
         const minAssignmentMinutes = options?.minAssignmentMinutes ?? 30;
         const minAssignmentDurationMs = minAssignmentMinutes * 60 * 1000;
         const alignStartBonus = options?.alignStartBonus ?? 150;
-        const budgetChunkMs = stepDurationMs;
+        const budgetMinThresholdMs = 60 * 1000; // 1 minute – minimum meaningful work for budget check
 
-        // Sort Tasks (Priority: mustComplete > Blockers > prefersComplete > Critical Path > Deps > Remaining Work)
-        assignableTasks.sort((a, b) => {
-            // 1. HIGHEST PRIORITY: mustCompleteWithinShift tasks
-            // These MUST start and finish in this shift - give them top priority
-            const aMust = a.task.shiftCompletionPreference === 'mustCompleteWithinShift';
-            const bMust = b.task.shiftCompletionPreference === 'mustCompleteWithinShift';
-            if (aMust && !bMust) return -1;
-            if (bMust && !aMust) return 1;
+        // Removed assignableTasks.sort() to strictly respect the incoming priority
+        // order established by PlanningService, ensuring continuity bonuses work.
 
-            // 2. Blockers (tasks that unblock others)
-            const isBlockerA = (a.dependentCount || 0) > 0;
-            const isBlockerB = (b.dependentCount || 0) > 0;
-            if (isBlockerA && !isBlockerB) return -1;
-            if (!isBlockerA && isBlockerB) return 1;
+        // ── STICKY RESERVATION PRE-PASS ──
+        // Workers who were previously on a task that still needs work are "reserved"
+        // for that task. This prevents higher-priority tasks from stealing them,
+        // eliminating the A → B → A fragmentation pattern.
+        //
+        // Priority 1: Persistent locks from planningService (survive seed gaps between passes)
+        // Priority 2: Previous-task adjacency from ResourceManager (fallback for unlocked workers)
+        const reservedWorkers = new Map<string, string>(); // workerId → reserved taskId
+        for (const w of allWorkers) {
+            // Check persistent lock first — survives across seed assignment gaps
+            const lockedTaskId = options?.workerLocks?.get(w.workerId);
+            if (lockedTaskId) {
+                const lockedItem = assignableTasks.find(item => item.task.taskId === lockedTaskId);
+                if (lockedItem && (lockedItem.rawRemainingHours ?? lockedItem.remainingHours) > 0.0001) {
+                    reservedWorkers.set(w.workerId, lockedTaskId);
+                    continue;
+                }
+            }
+            // Fallback: adjacency-based reservation for workers without a persistent lock
+            const prevTaskId = resourceManager.getPreviousTask(w.workerId, currentTime);
+            if (!prevTaskId) continue;
+            // Only reserve if the previous task is still assignable with actual remaining work
+            const prevItem = assignableTasks.find(item => item.task.taskId === prevTaskId);
+            if (prevItem && (prevItem.rawRemainingHours ?? prevItem.remainingHours) > 0.0001) {
+                reservedWorkers.set(w.workerId, prevTaskId);
+            }
+        }
 
-            // 3. prefersCompleteWithinShift - soft preference, prioritize early
-            const aPref = a.task.shiftCompletionPreference === 'prefersCompleteWithinShift';
-            const bPref = b.task.shiftCompletionPreference === 'prefersCompleteWithinShift';
-            if (aPref && !bPref) return -1;
-            if (bPref && !aPref) return 1;
-
-            // 4. [NEW] In-Progress Priority (Finish what you started)
-            // Ensure tasks that partially completed don't get dropped for new tasks during shift handover
-            const totalA = a.task.estimatedTotalLaborHours || a.remainingHours; // Fallback to avoid division by zero
-            const totalB = b.task.estimatedTotalLaborHours || b.remainingHours;
-
-            // "In-Flight" defined as: Started (remaining < total) but not finished (remaining > 0)
-            // Using a tolerance (0.1) to handle floating point noise
-            const aInFlight = a.remainingHours < totalA - 0.1 && a.remainingHours > 0;
-            const bInFlight = b.remainingHours < totalB - 0.1 && b.remainingHours > 0;
-
-            if (aInFlight && !bInFlight) return -1; // A is in-flight, B is prioritized lower
-            if (!aInFlight && bInFlight) return 1;
-
-            // 5. Critical Path Score
-            const scoreA = (a as any).criticalPathScore || 0;
-            const scoreB = (b as any).criticalPathScore || 0;
-            if (scoreA !== scoreB) return scoreB - scoreA;
-
-            // 6. Dependent Count
-            const depsA = a.dependentCount || 0;
-            const depsB = b.dependentCount || 0;
-            if (depsA !== depsB) return depsB - depsA;
-
-            // 7. Remaining Hours (longer tasks first as tie-breaker)
-            return b.remainingHours - a.remainingHours;
-        });
+        // Count reserved workers per task (for keepCrewTogether effectiveMax bump)
+        const reservedPerTask = new Map<string, number>();
+        if (options?.keepCrewTogether) {
+            for (const [, taskId] of reservedWorkers) {
+                reservedPerTask.set(taskId, (reservedPerTask.get(taskId) || 0) + 1);
+            }
+        }
 
         for (const item of assignableTasks) {
-            if (remainingBudgetMs !== undefined && remainingBudgetMs < budgetChunkMs) {
+            if (remainingBudgetMs !== undefined && remainingBudgetMs < budgetMinThresholdMs) {
                 break;
             }
             const { task } = item;
@@ -122,13 +118,15 @@ export class BalancingService {
             if (remaining <= 0.0001) continue;
 
             // 1. Crew Size Cap (Anti-Swarm)
-            // Logic: Default cap = ceil(TotalHours / 4).
-            // Example: 4h task -> 1 worker.
-            // MOD: If task blocks others (dependentCount > 0), be more aggressive (Divisor 2).
-            // 1. Crew Size Cap (Anti-Swarm) - DISABLED COMPLETELY
-            // Logic: User requested removal of divisor rule.
-            // Allow swarming up to task.maxWorkers (or default 100).
-            const optimalCrew = max;
+            // cap = ceil(totalHours / divisor). Divisor 2 if task blocks others, else 4.
+            const useAntiSwarm = true; // Toggle: false = disabled (swarm up to maxWorkers)
+            const bypassAntiSwarmForDependents = true; // Toggle: true = tasks WITH dependents skip anti-swarm, use maxWorkers
+            const totalHours = task.estimatedTotalLaborHours || remaining;
+            const divisor = 2;
+            const hasDependents = item.dependentCount && item.dependentCount > 0;
+            const optimalCrew = useAntiSwarm
+                ? (bypassAntiSwarmForDependents && hasDependents ? max : Math.ceil(totalHours / divisor))
+                : max;
 
             // CRUNCH TIME: If late in the day, boost crew to finish by deadline
             const hoursUntilEnd = Math.max(0.5, (endTimeLimit - currentTime) / (1000 * 60 * 60));
@@ -139,6 +137,18 @@ export class BalancingService {
             // Effective Max: Respect defined Max (usually 100) and calculated target.
             // No arbitrary "safety cap" of 4.
             let effectiveMax = Math.min(max, Math.max(min, targetCrew));
+
+            // PRACTICAL CREW CAP: Each worker should contribute at least 2× minAssignment
+            // (e.g., 1h for 30-min blocks). Prevents cluttered schedules with tiny stints.
+            // Exception: last 2 hours of shift — crunch takes priority.
+            if (options?.useCrewCap && remaining > 0) {
+                const practicalMinPerWorkerHours = (minAssignmentMinutes * 2) / 60;
+                const shiftRemainingHours = (endTimeLimit - currentTime) / (1000 * 60 * 60);
+                if (shiftRemainingHours > practicalMinPerWorkerHours * 2) {
+                    const practicalCrew = Math.max(min, Math.floor(remaining / practicalMinPerWorkerHours));
+                    effectiveMax = Math.min(effectiveMax, practicalCrew);
+                }
+            }
 
             // KAN-468: Apply interruption constraint if task is partially blocked
             const interruptMax = options?.interruptionConstraints?.get(task.taskId);
@@ -152,6 +162,15 @@ export class BalancingService {
             }
 
             const currentAssignedCount = resourceManager.getAssignedWorkerCount(task.taskId, currentTime, stepEnd);
+
+            // keepCrewTogether: ensure effectiveMax accommodates all reserved crew members
+            if (options?.keepCrewTogether) {
+                const reservedCount = reservedPerTask.get(task.taskId) || 0;
+                if (reservedCount > effectiveMax) {
+                    effectiveMax = reservedCount;
+                }
+            }
+
             if (currentAssignedCount >= effectiveMax) continue;
 
             // FIX: User disabled "efficiency" checks.
@@ -161,34 +180,84 @@ export class BalancingService {
 
             const loopMax = effectiveMax;
 
+            // 1b. Late Joiner Prevention: if remaining hours per current crew member < 2h,
+            // the crew can finish it themselves — don't add new workers.
+            let lateJoinerCrewIds: Set<string> | null = null;
+            if (options?.preventLateJoiners) {
+                const crewWorkerIds = new Set<string>();
+                for (const a of resourceManager.getAllAssignments()) {
+                    if (a.taskId === task.taskId && a.workerId) {
+                        crewWorkerIds.add(a.workerId);
+                    }
+                }
+                if (crewWorkerIds.size > 0 && (remaining / crewWorkerIds.size) < 1) {
+                    lateJoinerCrewIds = crewWorkerIds;
+                }
+            }
+
             // 2. Filter Eligible Candidates
             const candidates = allWorkers.filter(w => {
-                // A. Internal Busy Check
-                // FIX: Use Continuous Assignment (Sub-step scheduling)
-                // Instead of rejecting if booked, find NEXT availability within this step.
+                // A. Sticky Reservation: if worker is reserved for a DIFFERENT task, skip
+                const reservedFor = reservedWorkers.get(w.workerId);
+                if (reservedFor && reservedFor !== task.taskId) return false;
+
+                // B. Internal Busy Check
                 const nextAvail = resourceManager.getNextAvailability(w.workerId, currentTime, stepEnd, task.taskId);
                 if (nextAvail === null) return false; // Fully booked
 
                 // Store the calculated start time for this worker (might be mid-step)
                 (w as any)._tempStartTime = nextAvail;
 
-                // B. Skill Check - REMOVED
+                // C. Department Hard Constraint
+                if (options?.enforceDepartmentMatch && task.departmentId && w.departmentId) {
+                    if (task.departmentId !== w.departmentId) return false;
+                }
 
-                // C. Shift Availability Check (handled by caller somewhat, but good to check end time)
-                // If worker shift ends in 10 mins, maybe don't assign? 
-                // Let's rely on simple presence for now.
+                // C2. Preference Hard Constraint: worker must have an explicit positive preference for the task.
+                // canNotHelp (4) or no preference entry → blocked.
+                if (task.name) {
+                    const pref = w.preferences?.[task.name];
+                    if (pref === undefined || pref === 4) {
+                        return false;
+                    }
+                }
 
-                // D. Shift Completion Constraint - REMOVED
-                // The old logic incorrectly filtered workers instead of prioritizing tasks.
-                // mustCompleteWithinShift is now handled via task priority sorting.
-                // Tasks with this flag get HIGHEST priority to maximize completion chance.
-                // Violations are reported in the response if task doesn't complete.
+                // D. Skill Hard Constraint (cross-department only):
+                // Same-dept workers are governed by preferences, not skills.
+                // Cross-dept workers must have ALL required skills to be eligible.
+                const crossDept = task.departmentId && w.departmentId && task.departmentId !== w.departmentId;
+                if (crossDept) {
+                    const reqSkills = task.requiredSkills;
+                    if (reqSkills && reqSkills.length > 0) {
+                        if (!w.skills || w.skills.length === 0) return false;
+                        const hasAllSkills = reqSkills.every(skill => w.skills!.includes(skill));
+                        if (!hasAllSkills) return false;
+                    }
+                }
+
+                // E. Late Joiner Prevention: task past halfway with active crew → only existing crew
+                if (lateJoinerCrewIds && !lateJoinerCrewIds.has(w.workerId)) return false;
 
                 return true;
             });
 
-            // 3. Score Candidates (Stickiness)
-            const candidatePool = candidates.map(w => ({ worker: w }));
+            // 3. Crew Priority: existing crew fills slots first, newcomers get leftovers
+            const availableSlots = effectiveMax - currentAssignedCount;
+            const reservedCandidates = candidates.filter(w => reservedWorkers.get(w.workerId) === task.taskId);
+            const newcomerCandidates = candidates.filter(w => reservedWorkers.get(w.workerId) !== task.taskId);
+            // Sort newcomers by score before slicing so best-matched workers get priority
+            newcomerCandidates.sort((a, b) => {
+                const scoreA = this.calculateFinalScore(a, task, resourceManager, currentTime, options);
+                const scoreB = this.calculateFinalScore(b, task, resourceManager, currentTime, options);
+                return scoreB - scoreA;
+            });
+            const newcomerSlots = Math.max(0, availableSlots - reservedCandidates.length);
+            const finalCandidates = [
+                ...reservedCandidates,
+                ...newcomerCandidates.slice(0, newcomerSlots)
+            ];
+
+            const candidatePool = finalCandidates.map(w => ({ worker: w }));
 
             // 4. MinWorkers Constraint (with relaxation for in-progress tasks)
             // Check if task has already received work (from RM, not remaining hours)
@@ -233,7 +302,7 @@ export class BalancingService {
             while (candidatePool.length > 0) {
                 if (assignedCount >= loopMax) break;
                 if (remainingWorkMsForTask <= 0) break; // STOP: Task is now "complete" for this scheduling pass
-                if (remainingBudgetMs !== undefined && remainingBudgetMs < budgetChunkMs) break;
+                if (remainingBudgetMs !== undefined && remainingBudgetMs < budgetMinThresholdMs) break;
 
                 const scoredCandidates = candidatePool.map(box => {
                     const workerStartTime = (box.worker as any)._tempStartTime || currentTime;
@@ -259,9 +328,6 @@ export class BalancingService {
                     candidatePool.shift();
                 }
 
-                const workerPreviousTask = resourceManager.getPreviousTask(w.workerId, workerStartTime);
-                const isSameTask = workerPreviousTask === task.taskId;
-
                 // Check worker availability end time
                 let workerAvailabilityEnd = endTimeLimit;
                 if (w.availability) {
@@ -277,48 +343,51 @@ export class BalancingService {
                     }
                 }
 
+                // All assignments (switching or continuing) are locked to minAssignment blocks
+                // e.g. 30 min → assignments are always 30, 60, 90 min etc.
+                const minAssignmentEnd = workerStartTime + minAssignmentDurationMs;
                 const baseStepEnd = currentTime + stepDurationMs;
-                const minAssignmentEnd = !isSameTask
-                    ? workerStartTime + minAssignmentDurationMs
-                    : baseStepEnd;
                 const targetEndDate = Math.max(baseStepEnd, minAssignmentEnd);
 
-                // FIX: Duration Logic
-                // 1. Calculate max possible duration based on constraints
+                // Calculate max possible duration based on constraints
                 let availableDuration = Math.min(
-                    targetEndDate - workerStartTime,           // Time left in step
+                    targetEndDate - workerStartTime,           // Minimum assignment block
                     workerAvailabilityEnd - workerStartTime,   // Worker shift end
                     endTimeLimit - workerStartTime             // Global end
                 );
 
-                if (remainingBudgetMs !== undefined) {
-                    availableDuration = Math.min(availableDuration, remainingBudgetMs);
+                // Note: remainingBudgetMs does NOT cap availableDuration here.
+                // Budget tracks actual labor consumed (precise), not display block size.
+                // The budget check is done via remainingWorkMsForTask and the loop break above.
+
+                // Actual work this worker will consume (precise, for budget/task tracking)
+                let workConsumedMs = Math.min(availableDuration, remainingWorkMsForTask);
+
+                // keepCrewTogether: split remaining work equally so all crew members finish together
+                // Uses preciseDurationLimit (computed above) to cap each worker's share
+                if (options?.keepCrewTogether && preciseDurationLimit < Number.POSITIVE_INFINITY) {
+                    workConsumedMs = Math.min(workConsumedMs, preciseDurationLimit);
                 }
 
-                // Effective Duration for THIS worker
-                const workNeededDuration = remainingWorkMsForTask;
+                // Zero Duration Guard
+                if (workConsumedMs < 1000) continue;
 
-                const actualDuration = Math.min(availableDuration, workNeededDuration);
+                // Round up to nearest minAssignment boundary for display duration
+                // e.g. 10 min of actual work → 30 min block on the schedule
+                const maxAllowedDuration = Math.min(
+                    workerAvailabilityEnd - workerStartTime,
+                    endTimeLimit - workerStartTime
+                );
+                const roundedDuration = Math.ceil(workConsumedMs / minAssignmentDurationMs) * minAssignmentDurationMs;
+                const displayDuration = Math.min(roundedDuration, maxAllowedDuration);
 
-                // Zero Duration Guard - Enforce minimum 1 minute unless finishing?
-                // Actually, if actualDuration < 1s, just skip
-                if (actualDuration < 1000) continue;
+                if (displayDuration < 1000) continue;
 
-                const actualEndDate = workerStartTime + actualDuration;
+                const actualEndDate = workerStartTime + displayDuration;
+                const assignmentDurationMs = displayDuration;
 
-                // If actual duration is too small (e.g. < 10 mins), skip to avoid micro-assignments
-                // MOD: For continuous flow, we ALLOW them if they are meaningful > 1 min
-                const assignmentDurationMs = actualEndDate - workerStartTime;
-
-                // --- MIN ASSIGNMENT DURATION FOR TASK SWITCHES ---
-                // Check if this worker was on a DIFFERENT task before
-                if (!isSameTask && assignmentDurationMs < minAssignmentDurationMs) {
-                    continue;
-                }
-
-                // Allow > 1 min (legacy check, mostly superseded by above)
-                if (assignmentDurationMs < 60000 && remainingWorkMsForTask > 60000) {
-                    // Only skip if valid work exists but we are assigning < 1 min
+                // Skip if not enough room for a meaningful assignment
+                if (assignmentDurationMs < minAssignmentDurationMs && maxAllowedDuration >= minAssignmentDurationMs) {
                     continue;
                 }
 
@@ -333,11 +402,25 @@ export class BalancingService {
                 results.push(assignment);
                 assignedCount++;
 
-                // FIX: Decrement remaining work for this task
-                remainingWorkMsForTask -= assignmentDurationMs;
+                // Deduct actual work consumed (precise), NOT the padded display duration.
+                // This keeps budget/labor tracking accurate while the schedule shows clean 30-min blocks.
+                remainingWorkMsForTask -= workConsumedMs;
                 if (remainingBudgetMs !== undefined) {
-                    remainingBudgetMs -= budgetChunkMs;
-                    budgetUsedMs += budgetChunkMs;
+                    remainingBudgetMs -= workConsumedMs;
+                    budgetUsedMs += workConsumedMs;
+                }
+            }
+
+            // Release reservations when task is fully served.
+            // Handles the case where a task had a small "ghost remaining" due to
+            // progress-tracking divergence — only 1 worker was needed to cover it,
+            // but ALL previous workers were reserved. Release the un-needed ones
+            // so they can be assigned to other tasks in this same balance() call.
+            if (remainingWorkMsForTask <= 0) {
+                for (const [workerId, reservedTaskId] of reservedWorkers) {
+                    if (reservedTaskId === task.taskId) {
+                        reservedWorkers.delete(workerId);
+                    }
                 }
             }
         } // End of candidates loop
@@ -348,11 +431,11 @@ export class BalancingService {
     private getBaseScore(worker: Worker, taskName: string): number {
         const pref = this.getWorkerPreference(worker, taskName);
         switch (pref) {
-            case 1: return 100;
-            case 2: return 50;
-            case 3: return 10;
-            case 4: return 0;
-            default: return 10;
+            case 1: return 500;    // primaryJob
+            case 2: return 200;    // secondaryJob
+            case 3: return 100;    // canHelp
+            case 4: return -1000;  // canNotHelp — hard-blocked in candidate filter, score is fallback
+            default: return 10;    // no preference data — neutral
         }
     }
 
@@ -363,25 +446,35 @@ export class BalancingService {
         currentTime: number,
         options?: BalanceOptions
     ): number {
-        let score = this.getBaseScore(worker, task.name || "");
+        const sameDept = worker.departmentId && task.departmentId && worker.departmentId === task.departmentId;
 
-        // Continuity Bonus (Higher = Stickier)
-        // Check RM for previous slot
+        let score: number;
+
+        if (sameDept) {
+            // Same department: use preferences (+1000 dept bonus)
+            // Workers only have preferences for their own department's tasks
+            score = this.getBaseScore(worker, task.name || "") + 1000;
+        } else {
+            // Cross department: use skill matching instead of preferences
+            const requiredSkills: string[] = (task as any).requiredSkills || [];
+            const workerSkills: string[] = Array.isArray((worker as any).skills) ? (worker as any).skills : [];
+
+            if (requiredSkills.length === 0) {
+                score = 100; // No skill requirements — canHelp
+            } else if (requiredSkills.every((s: string) => workerSkills.includes(s))) {
+                score = 100; // Has ALL required skills — canHelp
+            } else {
+                score = -1000; // Missing skills — block
+            }
+        }
+
+        // Continuity Bonus
         const prevTask = rm.getPreviousTask(worker.workerId, currentTime);
-
-        // Define Penalty Base from options or default
-        const penaltyBase = options?.reassignmentPenalty ?? 500;
-
-        // Stickiness Logic:
-        // If same task: Big Bonus (2x Penalty or hardcoded high value?) 
-        // Let's use 2x Penalty to scale with the penalty preference.
-        // Default was +1000.
+        const penaltyBase = options?.reassignmentPenalty ?? 0;
 
         if (prevTask === task.taskId) {
             score += (penaltyBase * 2);
         } else if (prevTask) {
-            // Task Switching Penalty
-            // If they were working on something else just now, penalize switching
             score -= penaltyBase;
         }
 

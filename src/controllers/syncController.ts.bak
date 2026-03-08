@@ -1,0 +1,43 @@
+
+import { Request, Response, NextFunction } from 'express';
+import { SynchronizationService } from '../services/synchronizationService';
+
+const syncService = new SynchronizationService();
+
+export const syncController = {
+    async syncAll(req: Request, res: Response, next: NextFunction) {
+        try {
+            // Run both
+            const r1 = await syncService.syncWorkers();
+            const r2 = await syncService.syncLaborData();
+
+            res.json({
+                message: 'Full Synchronization Complete',
+                details: {
+                    workers: r1,
+                    labor: r2
+                }
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    async syncWorkers(req: Request, res: Response, next: NextFunction) {
+        try {
+            const result = await syncService.syncWorkers();
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    async syncLabor(req: Request, res: Response, next: NextFunction) {
+        try {
+            const result = await syncService.syncLaborData();
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    }
+};

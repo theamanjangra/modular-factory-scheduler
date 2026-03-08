@@ -10,6 +10,7 @@ export interface Assignment {
     workerName?: string;  // Human-readable name
     taskId: string;
     taskName?: string;
+    departmentId?: string;
     startTime?: string; // V2 Key
     endTime?: string;   // V2 Key
     startDate?: string; // V1 Back-compat
@@ -57,6 +58,7 @@ export interface ShiftCompletionPreference {
 
 export interface Task extends ShiftCompletionPreference {
     taskId: string;
+    departmentId?: string;
     name?: string;
     minWorkers?: number;
     maxWorkers?: number;

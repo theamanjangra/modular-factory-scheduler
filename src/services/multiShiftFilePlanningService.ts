@@ -22,201 +22,181 @@ export class MultiShiftFilePlanningService {
         this.planningService = new PlanningService();
     }
 
-    public async plan(request: MultiShiftFilePlanRequest): Promise<{
+    public async plan(request: MultiShiftFilePlanRequest & { shifts?: any[] }): Promise<{
         assignments: WorkerTask[];
         idleWorkers: WorkerTask[];
         deficitTasks: DeficitTask[];
         taskProgress?: any[];
     }> {
-        console.log('--- STARTING SPLIT MULTI-SHIFT SIMULATION ---');
-        const shift1Rate = request.startingShiftPct || 1.0;
-        const shift2Rate = request.endingShiftPct || 0.0; // might be unused if we just take "remainder"
+        console.log('--- STARTING DYNAMIC MULTI-SHIFT SIMULATION ---');
 
-        // 1. Prepare Workers & Intervals
-        // Shift 1
-        const s1Start = new Date(request.shift1Interval.startTime);
-        const s1End = new Date(request.shift1Interval.endTime);
-        const shift1Workers = this.filterWorkersForShift('shift-1', request.workers).map(w => ({
-            ...w,
-            availability: { startTime: s1Start.toISOString(), endTime: s1End.toISOString() }
-        })) as Worker[];
+        // 0. Normalize Shifts Input
+        let shifts: Array<{
+            id: string;
+            startTime: string; // ISO
+            endTime: string;   // ISO
+            productionRate?: number;
+        }> = [];
 
-        // Shift 2
-        let s2Start: Date | undefined;
-        let s2End: Date | undefined;
-        let shift2Workers: Worker[] = [];
+        if (request.shifts && Array.isArray(request.shifts) && request.shifts.length > 0) {
+            shifts = request.shifts;
+        } else {
+            // Fallback to Legacy Shift 1 / Shift 2
+            const s1Rate = request.startingShiftPct || 1.0;
+            shifts.push({
+                id: 'shift-1',
+                startTime: request.shift1Interval.startTime,
+                endTime: request.shift1Interval.endTime,
+                productionRate: s1Rate
+            });
 
-        if (request.shift2Interval) {
-            s2Start = new Date(request.shift2Interval.startTime);
-            s2End = new Date(request.shift2Interval.endTime);
-            shift2Workers = this.filterWorkersForShift('shift-2', request.workers).map(w => ({
-                ...w,
-                availability: { startTime: s2Start!.toISOString(), endTime: s2End!.toISOString() }
-            })) as Worker[];
+            if (request.shift2Interval) {
+                shifts.push({
+                    id: 'shift-2',
+                    startTime: request.shift2Interval.startTime,
+                    endTime: request.shift2Interval.endTime,
+                    productionRate: request.endingShiftPct || (1.0 - s1Rate)
+                });
+            }
         }
 
-        // 2. Prepare Tasks & Budget (Budget used only for target logging now)
+        console.log(`Planned Shifts: ${shifts.length}`);
+
+        // 1. Prepare Data
         const baseTasks = this.cloneTasks(request.tasks);
         const totalEstimatedHours = this.normalizeTaskEstimates(baseTasks);
         console.log(`Total Estimated Hours (Basis): ${totalEstimatedHours.toFixed(2)}`);
 
-        // Calculate Shift 1 Budget Target (Informational)
-        const shift1Budget = Math.max(0.1, totalEstimatedHours * shift1Rate);
-        console.log(`Shift 1 Target Goal (${(shift1Rate * 100).toFixed(1)}%): ${shift1Budget.toFixed(2)} hours (Not enforced as hard limit)`);
+        const allAssignments: WorkerTask[] = [];
+        const allIdle: WorkerTask[] = [];
 
-        // 3. EXECUTE SHIFT 1
-        console.log(`>>> RUNNING SHIFT 1 <<<`);
-        const s1Request: PlanRequest = {
-            workers: shift1Workers,
-            tasks: baseTasks,
-            interval: { startTime: s1Start.toISOString(), endTime: s1End.toISOString() },
-            useHistorical: false,
-            scheduling: request.scheduling
-            // workBudgetHours removed to prevent artificial idle time
-        };
-        const s1Steps = await this.planningService.plan(s1Request);
-        const s1Agg = aggregateSchedule(s1Steps);
-        const s1Assignments = s1Agg.assignments.map(a => ({
-            workerId: a.workerId,
-            taskId: a.taskId,
-            startDate: a.startDate,
-            endDate: a.endDate,
-            isWaitTask: (a as any).isWaitTask
-        })) as WorkerTask[];
-        const s1Idle = s1Steps.filter(s => s.type === 'worker_idle').map(s => ({
-            workerId: s.workerId!,
-            taskId: null,
-            startDate: s.startDate,
-            endDate: s.endDate
-        })) as WorkerTask[];
+        let currentRemainingMap = this.calculateRemainingHours(baseTasks, []); // Initial remaining = total
 
-        // 4. Update Task State for Shift 2
-        // We must calculate how much work was ACTUALLY done in Shift 1
-        // and update the task definitions for Shift 2.
-        const remainingMap = this.calculateRemainingHours(baseTasks, s1Assignments);
+        // 2. Iterate Shifts
+        for (let i = 0; i < shifts.length; i++) {
+            const shift = shifts[i];
+            const rate = shift.productionRate || 1.0;
+            console.log(`>>> RUNNING SHIFT ${shift.id} (${shift.startTime} - ${shift.endTime}) <<<`);
 
-        // 5. GAP SIMULATION (Overnight Logic)
-        // Non-Worker tasks (drying/curing) should continue to progress during the gap between Shift 1 and Shift 2.
-        let gapHours = 0;
-        if (s2Start && s1End) {
-            const gapMs = s2Start.getTime() - s1End.getTime();
-            gapHours = Math.max(0, gapMs / (1000 * 60 * 60));
-        }
+            // Filter Workers for this shift
+            const shiftWorkers = this.filterWorkersForShift(shift.id, request.workers).map(w => ({
+                ...w,
+                availability: { startTime: shift.startTime, endTime: shift.endTime }
+            })) as Worker[];
 
-        if (gapHours > 0) {
-            console.log(`Gap Duration: ${gapHours.toFixed(2)} hours`);
-            baseTasks.forEach(task => {
-                // Check if Non-Worker Task
-                const isNonWorker = task.taskType === 'nonWorker' || (task.minWorkers === 0 && task.maxWorkers === 0);
+            if (shiftWorkers.length === 0) {
+                console.warn(`No workers found for shift ${shift.id}. Skipping.`);
+                continue;
+            }
 
-                if (isNonWorker) {
-                    // FIX 1: Check Prerequisites
-                    const prereqsComplete = !task.prerequisiteTaskIds ||
-                        task.prerequisiteTaskIds.every(prereqId => {
-                            const prereqRemaining = remainingMap.get(prereqId) || 0;
-                            // Tolerance for float precision
-                            return prereqRemaining <= 0.01;
-                        });
+            // Prepare Tasks with updated remaining hours
+            const shiftTasks = this.cloneTasks(baseTasks).map(t => ({
+                ...t,
+                estimatedRemainingLaborHours: currentRemainingMap.get(t.taskId) || 0
+            })).filter(t => (t.estimatedRemainingLaborHours || 0) > 0.001); // Only tasks with work left
 
-                    if (prereqsComplete) {
-                        const currentRemaining = remainingMap.get(task.taskId) || 0;
-                        if (currentRemaining > 0) {
-                            const deduction = Math.min(currentRemaining, gapHours);
-                            const newRemaining = currentRemaining - deduction;
-                            remainingMap.set(task.taskId, newRemaining);
-                            console.log(`Processed Gap for Task ${task.name}: ${currentRemaining.toFixed(2)} -> ${newRemaining.toFixed(2)} (Deducted ${deduction.toFixed(2)})`);
+            if (shiftTasks.length === 0) {
+                console.log(`No remaining work for shift ${shift.id}.`);
+                continue;
+            }
 
-                            // FIX 3: Create Virtual Assignment for Controller Visibility
-                            if (deduction > 0) {
-                                // Gap effectively starts at Shift 1 End
-                                const gapStart = s1End.getTime();
-                                const durationMs = deduction * 60 * 60 * 1000;
-                                s1Assignments.push({
-                                    workerId: null, // Virtual assignment
-                                    taskId: task.taskId,
-                                    startDate: new Date(gapStart).toISOString(),
-                                    endDate: new Date(gapStart + durationMs).toISOString(),
-                                    isWaitTask: true
-                                } as any);
+            // Execute Planning
+            const shiftRequest: PlanRequest = {
+                workers: shiftWorkers,
+                tasks: shiftTasks,
+                interval: { startTime: shift.startTime, endTime: shift.endTime },
+                useHistorical: false,
+                scheduling: request.scheduling
+            };
+
+            const steps = await this.planningService.plan(shiftRequest);
+            const agg = aggregateSchedule(steps);
+
+            const assignments = agg.assignments.map(a => ({
+                workerId: a.workerId,
+                taskId: a.taskId,
+                startDate: a.startDate,
+                endDate: a.endDate,
+                shiftId: shift.id, // Stamp Shift ID
+                isWaitTask: (a as any).isWaitTask
+            })) as WorkerTask[];
+
+            const idle = steps.filter(s => s.type === 'worker_idle').map(s => ({
+                workerId: s.workerId!,
+                taskId: null,
+                startDate: s.startDate,
+                endDate: s.endDate,
+                shiftId: shift.id
+            })) as WorkerTask[];
+
+            allAssignments.push(...assignments);
+            allIdle.push(...idle);
+
+            // Update Remaining Map for next shift
+            // We calculate remaining based on *accumulated* assignments so far to avoid drift? 
+            // Or just subtract what we just did?
+            // Safer to recalculate from baseTasks and ALL assignments to date.
+            currentRemainingMap = this.calculateRemainingHours(baseTasks, allAssignments);
+
+            // 3. GAP SIMULATION (Logic between this shift and next)
+            // If there is a next shift, check for gap
+            if (i < shifts.length - 1) {
+                const nextShift = shifts[i + 1];
+                const currentEnd = new Date(shift.endTime).getTime();
+                const nextStart = new Date(nextShift.startTime).getTime();
+                const gapMs = nextStart - currentEnd;
+                const gapHours = Math.max(0, gapMs / (1000 * 60 * 60));
+
+                if (gapHours > 0.01) {
+                    console.log(`Gap Duration after ${shift.id}: ${gapHours.toFixed(2)} hours`);
+
+                    // Process Non-Worker Tasks (Drying/Curing)
+                    baseTasks.forEach(task => {
+                        const isNonWorker = task.taskType === 'nonWorker' || (task.minWorkers === 0 && task.maxWorkers === 0);
+                        if (isNonWorker) {
+                            // Check Prerequisites
+                            const prerequisiteIds = task.prerequisiteTaskIds || [];
+                            const prereqsComplete = prerequisiteIds.every(pid => {
+                                const rem = currentRemainingMap.get(pid) || 0;
+                                return rem <= 0.01;
+                            });
+
+                            if (prereqsComplete) {
+                                const currentRem = currentRemainingMap.get(task.taskId) || 0;
+                                if (currentRem > 0) {
+                                    const deduction = Math.min(currentRem, gapHours);
+
+                                    // Add Virtual Assignment
+                                    if (deduction > 0) {
+                                        const gStart = currentEnd;
+                                        const durMs = deduction * 60 * 60 * 1000;
+                                        allAssignments.push({
+                                            workerId: null,
+                                            taskId: task.taskId,
+                                            shiftId: 'GAP',
+                                            startDate: new Date(gStart).toISOString(),
+                                            endDate: new Date(gStart + durMs).toISOString(),
+                                            isWaitTask: true
+                                        } as any);
+
+                                        // Update remaining map immediately for this task
+                                        const newRem = currentRem - deduction;
+                                        currentRemainingMap.set(task.taskId, newRem);
+                                    }
+                                }
                             }
                         }
-                    } else {
-                        console.log(`Skipping Gap for ${task.name}: Prereqs not ready.`);
-                    }
+                    });
                 }
-            });
-        }
-
-        // 6. EXECUTE SHIFT 2 (if exists)
-        let s2Assignments: WorkerTask[] = [];
-        let s2Idle: WorkerTask[] = [];
-
-        if (s2Start && s2End && shift2Workers.length > 0) {
-            // Create new Task objects with updated Remaining Hours
-            const shift2Tasks = this.cloneTasks(baseTasks).map(t => ({
-                ...t,
-                estimatedRemainingLaborHours: remainingMap.get(t.taskId) || 0
-            }));
-            // DO NOT FILTER out finished tasks; they are needed for dependency resolution.
-
-            if (shift2Tasks.some(t => (t.estimatedRemainingLaborHours || 0) > 0)) {
-                // If we simply pass "remaining" budget, it might be huge if estimates were off.
-                // Just let Shift 2 run until time runs out or work finishes.
-                // Or should we enforce shift2Rate? 
-                // Usually Shift 2 is "finish the rest" or "do up to X%".
-                // If user said 55/45, and Shift 1 did 55, Shift 2 should try to do 45.
-                // But budget is optional in PlanRequest. If omitted, it runs til completion/time.
-                // Let's omit budget for Shift 2 to allow "catch up" unless strictly constrained?
-                // Given the user issue was "Shift 2 empty", let's be generous.
-
-                console.log(`Debug S2 Workers: ${shift2Workers.length}`);
-                if (shift2Workers.length > 0) {
-                    console.log(`S2 Worker 0 Avail: ${JSON.stringify(shift2Workers[0].availability)}`);
-                    console.log(`S2 Worker 0 Pref: ${shift2Workers[0].shiftPreference}`);
-                }
-                console.log(`Debug S2 Tasks: ${shift2Tasks.length}`);
-                console.log(`S2 Task 0 Remaining: ${shift2Tasks[0].estimatedRemainingLaborHours}`);
-                console.log(`S2 Task 0 Type: ${shift2Tasks[0].taskType}`);
-
-                const s2Request: PlanRequest = {
-                    workers: shift2Workers,
-                    tasks: shift2Tasks,
-                    interval: { startTime: s2Start.toISOString(), endTime: s2End.toISOString() },
-                    useHistorical: false,
-                    scheduling: request.scheduling
-                    // workBudgetHours: ... // Optional
-                };
-                const s2Steps = await this.planningService.plan(s2Request);
-                const s2Agg = aggregateSchedule(s2Steps);
-                s2Assignments = s2Agg.assignments.map(a => ({
-                    workerId: a.workerId,
-                    taskId: a.taskId,
-                    startDate: a.startDate,
-                    endDate: a.endDate,
-                    isWaitTask: (a as any).isWaitTask
-                })) as WorkerTask[];
-                s2Idle = s2Steps.filter(s => s.type === 'worker_idle').map(s => ({
-                    workerId: s.workerId!,
-                    taskId: null,
-                    startDate: s.startDate,
-                    endDate: s.endDate
-                })) as WorkerTask[];
-            } else {
-                console.log("No work remaining for Shift 2.");
             }
         }
 
-        // 6. Merge Results
-        const allAssignments = [...s1Assignments, ...s2Assignments];
-        const allIdle = [...s1Idle, ...s2Idle];
-
-        // 7. Final Deficits
-        const finalRemainingMap = this.calculateRemainingHours(baseTasks, allAssignments);
+        // 4. Final Deficits
         const deficitTasks = baseTasks
-            .filter(task => (finalRemainingMap.get(task.taskId) || 0) > 0.1)
+            .filter(task => (currentRemainingMap.get(task.taskId) || 0) > 0.1)
             .map(task => ({
                 taskId: task.taskId,
-                deficitHours: finalRemainingMap.get(task.taskId) || 0,
+                deficitHours: currentRemainingMap.get(task.taskId) || 0,
                 requiredSkills: task.requiredSkills
             }));
 

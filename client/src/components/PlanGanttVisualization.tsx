@@ -4,6 +4,8 @@ import { scaleTime as d3ScaleTime } from 'd3-scale';
 import type { Assignment, PlanResponse } from '../types';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { toPng } from 'html-to-image';
+import { Camera } from 'lucide-react';
 
 interface Props {
     data: PlanResponse;
@@ -69,12 +71,24 @@ const colors = {
     }
 };
 
-// Worker color palette for task view - High contrast dark blue
+// Worker color palette for task view - High contrast dark blue (fallback when no department)
 const workerColors = Array(12).fill({
     bg: 'rgba(29, 78, 216, 0.85)',
     border: '#1e3a8a',
     text: '#ffffff'
 });
+
+// Department color palette - distinct, accessible colors
+const DEPARTMENT_PALETTE = [
+    { bg: 'rgba(29, 78, 216, 0.85)', border: '#1e3a8a', text: '#ffffff' },  // Blue
+    { bg: 'rgba(220, 38, 38, 0.80)', border: '#991b1b', text: '#ffffff' },  // Red
+    { bg: 'rgba(22, 163, 74, 0.80)', border: '#166534', text: '#ffffff' },  // Green
+    { bg: 'rgba(168, 85, 247, 0.80)', border: '#7e22ce', text: '#ffffff' },  // Purple
+    { bg: 'rgba(234, 179, 8, 0.85)', border: '#a16207', text: '#1a1a1a' },  // Yellow
+    { bg: 'rgba(236, 72, 153, 0.80)', border: '#be185d', text: '#ffffff' },  // Pink
+    { bg: 'rgba(20, 184, 166, 0.80)', border: '#0f766e', text: '#ffffff' },  // Teal
+    { bg: 'rgba(249, 115, 22, 0.80)', border: '#c2410c', text: '#ffffff' },  // Orange
+];
 
 // Fixed time constants
 const SIDEBAR_WIDTH = 160;  // slightly wider for readability
@@ -91,6 +105,35 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [debug, setDebug] = useState(false);
     const [containerWidth, setContainerWidth] = useState(1200); // fallback
+    const [isCapturing, setIsCapturing] = useState(false);
+
+    const handleScreenshot = async () => {
+        if (!containerRef.current || isCapturing) return;
+        setIsCapturing(true);
+        try {
+            // Target the internal scrolling container directly
+            const targetElement = containerRef.current.querySelector('div.flex.min-w-max');
+            if (!targetElement) throw new Error("Could not find the chart container");
+
+            // Wait a bit to ensure rendering is complete
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            const dataUrl = await toPng(targetElement as HTMLElement, {
+                backgroundColor: '#ffffff',
+                pixelRatio: 2, // Higher resolution
+            });
+
+            const link = document.createElement('a');
+            link.download = `schedule-export-${new Date().toISOString().split('T')[0]}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (error) {
+            console.error('Failed to capture screenshot:', error);
+            alert(`Failed to capture screenshot: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+            setIsCapturing(false);
+        }
+    };
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -173,7 +216,11 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
 
                 taskIdToBaseName.forEach((baseName, taskId) => {
                     const count = taskNameCounts.get(baseName) || 0;
-                    const label = count > 1 ? `${baseName} (${taskId})` : baseName;
+                    // FIX: Don't show full UUID. If duplicate names exist, maybe show short ID or just index?
+                    // User complained about "names", so implies UUIDs are ugly.
+                    // Let's just show the Name. If duplicates, they will look same but that might be preferable.
+                    // Or keep a short hash? Let's just use baseName for now as it's cleaner.
+                    const label = baseName;
                     taskIdToLabel.set(taskId, label);
                 });
 
@@ -184,7 +231,7 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
                     if (!taskKey) return;
                     taskIdSet.add(taskKey);
                     if (!taskIdToLabel.has(taskKey)) {
-                        const label = (a.taskName || taskKey).toString().trim() || taskKey;
+                        const label = (a.taskName || 'Unknown Task').toString().trim();
                         taskIdToLabel.set(taskKey, label);
                     }
                 });
@@ -234,6 +281,25 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
                 workerColorMap.set(wid, workerColors[idx % workerColors.length]);
             });
 
+            // Build department color map from unique departmentIds in assignments
+            const deptIds = Array.from(new Set(
+                assignments.filter(a => a.departmentId).map(a => a.departmentId!)
+            )).sort();
+            const departmentColorMap = new Map<string, typeof DEPARTMENT_PALETTE[0]>();
+            deptIds.forEach((dept, i) => {
+                departmentColorMap.set(dept, DEPARTMENT_PALETTE[i % DEPARTMENT_PALETTE.length]);
+            });
+
+            // Build department name lookup from tasks data
+            const departmentNameMap = new Map<string, string>();
+            if (data.tasks) {
+                data.tasks.forEach((t: any) => {
+                    if (t.departmentId && t.departmentName && !departmentNameMap.has(t.departmentId)) {
+                        departmentNameMap.set(t.departmentId, t.departmentName);
+                    }
+                });
+            }
+
             // Group assignments by calendar date (day)
             const getDateKey = (date: Date) => {
                 return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -262,21 +328,41 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
             let startH = 6;
             let endH = 18;
 
+            let min = 24;
+            let max = 0;
+
+            // 1. Try to get bounds from shift bounds (Best for showing the whole intended shift window)
+            const payloadShifts = data.productionPlanShifts || data.shifts || [];
+            if (payloadShifts && Array.isArray(payloadShifts)) {
+                payloadShifts.forEach((s: any) => {
+                    const shiftDetails = s.shift || s;
+                    // Sometimes startTime is "13:30", sometimes it's a number 13.5
+                    if (shiftDetails.startTime !== undefined) {
+                        let h1 = typeof shiftDetails.startTime === 'number' ? shiftDetails.startTime : parseFloat(shiftDetails.startTime);
+                        if (!isNaN(h1) && h1 < min) min = h1;
+                    }
+                    if (shiftDetails.endTime !== undefined) {
+                        let h2 = typeof shiftDetails.endTime === 'number' ? shiftDetails.endTime : parseFloat(shiftDetails.endTime);
+                        if (!isNaN(h2) && h2 > max) max = h2;
+                    }
+                });
+            }
+
+            // 2. Also incorporate bounds from actual assignments (In case tasks spill out or shift info missing)
             if (assignments.length > 0) {
-                let min = 24;
-                let max = 0;
                 assignments.forEach(a => {
                     const h1 = a.s.getHours() + (a.s.getMinutes() / 60);
                     const h2 = a.e.getHours() + (a.e.getMinutes() / 60);
                     if (h1 < min) min = h1;
                     if (h2 > max) max = h2;
                 });
-                // startH = Math.floor(min);
-                // endH = Math.ceil(max);
-                // startH = Math.max(0, startH - 1);
-                // endH = Math.min(24, Math.max(endH + 1, startH + 4));
-                startH = 6;
-                endH = 22;
+            }
+
+            if (min < 24 && max > 0) {
+                startH = Math.floor(min);
+                endH = Math.ceil(max);
+                startH = Math.max(0, startH - 1); // Buffer: Start 1 hour earlier
+                endH = Math.min(24, Math.max(endH + 1, startH + 4)); // Buffer: End 1 hour later, min 4h width
             }
 
             const viewStartHour = startH;
@@ -388,7 +474,7 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
             };
 
 
-            return { daySections, debugStats, allRowIds, workerColorMap, workerNameMap, taskMaxWorkers, dayStartHour: viewStartHour, dayEndHour: viewEndHour, rowIdToProgressMap, taskIdToLabel };
+            return { daySections, debugStats, allRowIds, workerColorMap, departmentColorMap, departmentNameMap, workerNameMap, taskMaxWorkers, dayStartHour: viewStartHour, dayEndHour: viewEndHour, rowIdToProgressMap, taskIdToLabel };
         } catch (err) {
             console.error('Gantt processing error', err);
             const now = new Date();
@@ -408,6 +494,8 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
                 debugStats: { totalRaw: 0, parsed: 0, days: 0, uniqueWorkers: [], dateRange: 'N/A' },
                 allRowIds: [],
                 workerColorMap,
+                departmentColorMap: new Map<string, typeof DEPARTMENT_PALETTE[0]>(),
+                departmentNameMap: new Map<string, string>(),
                 workerNameMap: new Map<string, string>(),
                 taskMaxWorkers: new Map<string, number>(),
                 dayStartHour: now.getHours(),
@@ -418,7 +506,7 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
         }
     }, [data, viewMode, DAY_WIDTH_PX, showNonLabor]);
 
-    const { daySections, debugStats, allRowIds, workerColorMap, workerNameMap, taskMaxWorkers, dayStartHour, dayEndHour, rowIdToProgressMap, taskIdToLabel } = processed as any;
+    const { daySections, debugStats, allRowIds, workerColorMap, departmentColorMap, departmentNameMap, workerNameMap, taskMaxWorkers, dayStartHour, dayEndHour, rowIdToProgressMap, taskIdToLabel } = processed as any;
 
     // Calculate row heights - FIXED for task view
     const FIXED_TASK_ROW_HEIGHT = 120; // Increased height for better visibility
@@ -500,6 +588,19 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
                     </button>
                 </div>
 
+                {/* Department color legend */}
+                {departmentColorMap && departmentColorMap.size > 0 && (
+                    <div className="flex flex-wrap gap-3 px-2 py-1 text-xs items-center">
+                        <span className="text-gray-400 font-medium">Departments:</span>
+                        {Array.from(departmentColorMap.entries()).map(([deptId, color]: [string, any]) => (
+                            <span key={deptId} className="flex items-center gap-1">
+                                <span className="w-3 h-3 rounded" style={{ backgroundColor: color.bg }} />
+                                <span className="text-gray-600">{departmentNameMap?.get(deptId) || deptId}</span>
+                            </span>
+                        ))}
+                    </div>
+                )}
+
                 <div className="flex items-center gap-3 text-[10px] text-gray-500">
                     {viewMode === 'worker' && (
                         <label className="flex items-center gap-1 text-gray-500">
@@ -521,6 +622,21 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
                     <span className="flex items-center gap-1">
                         <span className="w-3 h-3 rounded" style={{ background: colors.nightGap }}></span> Night
                     </span>
+
+                    <button
+                        onClick={handleScreenshot}
+                        disabled={isCapturing}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 ml-2 text-xs font-semibold rounded-md transition-all shadow-sm border",
+                            isCapturing
+                                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                        )}
+                        title="Export full schedule as PNG"
+                    >
+                        <Camera size={14} className={isCapturing ? "animate-pulse" : ""} />
+                        {isCapturing ? "Exporting..." : "Export Image"}
+                    </button>
                 </div>
             </div>
 
@@ -777,7 +893,8 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
                                                 const laneHeight = (rowHeight - 10) / Math.max(1, uniqueWorkersInRow.length);
                                                 const barHeight = Math.max(2, laneHeight - 2);
                                                 const y = HEADER_HEIGHT + rowY + 5 + (workerLaneIndex * laneHeight);
-                                                const workerColor = workerColorMap.get(item.workerId) || workerColors[0];
+                                                const deptColor = item.departmentId ? departmentColorMap.get(item.departmentId) : null;
+                                                const barColor = deptColor || workerColorMap.get(item.workerId) || workerColors[0];
 
                                                 return (
                                                     <g key={`${rowId}-${itemIdx}`}>
@@ -787,8 +904,8 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
                                                             width={w}
                                                             height={barHeight}
                                                             rx={2}
-                                                            fill={highlightedTaskIds?.has(item.taskId || item.taskName) ? '#f59e0b' : workerColor.bg}
-                                                            stroke={highlightedTaskIds?.has(item.taskId || item.taskName) ? '#b45309' : workerColor.border}
+                                                            fill={highlightedTaskIds?.has(item.taskId || item.taskName) ? '#f59e0b' : barColor.bg}
+                                                            stroke={highlightedTaskIds?.has(item.taskId || item.taskName) ? '#b45309' : barColor.border}
                                                             strokeWidth={1}
                                                         />
                                                         {/* Only show label if bar is tall enough */}
@@ -798,7 +915,7 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
                                                                 y={y + barHeight / 2 + 5}
                                                                 fontSize={14}
                                                                 fontWeight={700}
-                                                                fill={workerColor.text}
+                                                                fill={barColor.text}
                                                                 style={{ pointerEvents: 'none' }}
                                                             >
                                                                 {w > 20 ? item.workerLabel : ''}
@@ -841,7 +958,8 @@ const PlanGanttInner: React.FC<Props> = ({ data, highlightedTaskIds }) => {
                                             }
 
                                             // WORKER VIEW: standard rendering
-                                            const style = isIdle ? colors.barIdle : (workerColorMap.get(item.workerId) || workerColors[0]);
+                                            const deptStyle = item.departmentId ? departmentColorMap.get(item.departmentId) : null;
+                                            const style = isIdle ? colors.barIdle : (deptStyle || workerColorMap.get(item.workerId) || workerColors[0]);
                                             const y = HEADER_HEIGHT + rowY + 6;
                                             const barHeight = rowHeight - 12;
                                             const isHighlighted = !isIdle && highlightedTaskIds?.has(item.taskId || item.taskName);

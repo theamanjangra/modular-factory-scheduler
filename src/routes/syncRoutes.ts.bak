@@ -1,0 +1,18 @@
+
+import { Router } from 'express';
+import { syncController } from '../controllers/syncController';
+// import { requireAuth, requireAdmin } from '../middlewares/authMiddleware'; 
+// (For now, we might leave it open or add basic auth later, as Middleware might not be fully set up for API keys)
+
+const router = Router();
+
+// POST /api/sync/all
+router.post('/all', syncController.syncAll);
+
+// POST /api/sync/workers
+router.post('/workers', syncController.syncWorkers);
+
+// POST /api/sync/labor
+router.post('/labor', syncController.syncLabor);
+
+export default router;

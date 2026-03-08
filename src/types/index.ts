@@ -6,6 +6,7 @@ export interface Interval {
 export interface Worker {
     workerId: string;
     name: string;
+    departmentId?: string; // Primary department for department-wise scheduling
     shiftPreference?: string; // Optional shift name/id preference (e.g., "shift-1", "shift-2")
     availability?: {
         startTime: string;
@@ -21,6 +22,7 @@ export interface Worker {
 export interface Task {
     taskId: string;
     name?: string;
+    departmentId?: string; // Department from TaskTemplate for department-wise scheduling
     minWorkers?: number;
     maxWorkers?: number;
     estimatedTotalLaborHours?: number;
@@ -48,9 +50,11 @@ export interface Task {
 export interface WorkerTask {
     workerId: string | null; // null = unassigned task
     taskId: string | null;   // null = idle worker
-    startDate: string; // ISO String
-    endDate: string;   // ISO String
-    isWaitTask?: boolean;
+    taskName?: string;
+    startDate: string; // ISO
+    endDate: string;   // ISO
+    shiftId?: string;  // NEW: Track which shift this assignment belongs to
+    isWaitTask?: boolean; // If true, this is a gap/wait/curing period
 }
 
 export interface SchedulingConfig {
@@ -75,6 +79,10 @@ export interface PlanRequest {
     useHistorical: boolean;
     workBudgetHours?: number;
     scheduling?: SchedulingConfig;
+    enforceDepartmentMatch?: boolean; // When true, workers can only be assigned to same-department tasks
+    useCrewCap?: boolean; // When true, limits crew size so each worker contributes at least 2× minAssignment of work
+    preventLateJoiners?: boolean; // When true, don't assign new workers to a task past halfway with an active crew
+    keepCrewTogether?: boolean; // When true, all crew members stay on a task until it's complete
 }
 
 export interface AdjustPlanPreferences {
@@ -198,10 +206,17 @@ export interface ShiftPlanWindow {
 }
 
 export interface MultiShiftPlanRequest {
-    shift1: ShiftPlanWindow;
-    shift2?: ShiftPlanWindow;
+    shifts: ShiftPlanWindow[];
     tasks: Task[];
     workers?: Worker[];
+    enforceDepartmentMatch?: boolean;
+    useCrewCap?: boolean;
+    /** Two-pass scheduling: Pass 1 = hard dept constraint, Pass 2 = soft scoring for idle workers on deficit tasks */
+    useTwoPassDepartmentScheduling?: boolean;
+    preventLateJoiners?: boolean;
+    keepCrewTogether?: boolean; // When true, all crew members stay on a task until it's complete
+    /** Normalized IDs of workers currently clocked in. If set, active shifts only schedule these workers. */
+    clockedInWorkerIds?: Set<string>;
 }
 
 // File-driven multi-shift request (used by UI testing flow)
@@ -233,11 +248,14 @@ export interface DeficitTask {
 export interface TaskShiftProgress {
     taskId: string;
     taskName?: string;
-    shift1Hours: number;
+    shift1Hours: number; // Keep for legacy/compat or genericize? Let's genericize in V3, but for now just keep as specific fields or add dynamic map?
+    // Actually, let's keep specific fields for now to avoid breaking frontend excessively, 
+    // BUT we should probably add `hoursByShift: Record<string, number>` for the new UI.
     shift2Hours: number;
+    hoursByShift?: Record<string, number>; // New dynamic tracking
     totalRequiredHours: number;
     completionPercentage: number;
-    completedInShift: 'shift1' | 'shift2' | 'spans_shifts' | 'incomplete';
+    completedInShift: 'shift1' | 'shift2' | 'spans_shifts' | 'incomplete' | string; // Allow dynamic shift IDs
     shiftCompletionPreference?: 'mustCompleteWithinShift' | 'prefersCompleteWithinShift' | 'doesNotMatter';
 }
 
@@ -261,10 +279,12 @@ export interface MultiShiftPlanResponse {
     idleWorkers: WorkerTask[];
     deficitTasks: DeficitTask[];
     taskProgress: TaskShiftProgress[];
-    shift1Summary: ShiftSummary;
-    shift2Summary?: ShiftSummary;
+    shiftSummaries: ShiftSummary[]; // New dynamic array
+    shift1Summary?: ShiftSummary; // Deprecated but kept for compat if needed (will remove)
+    shift2Summary?: ShiftSummary; // Deprecated
     violations: ShiftCompletionViolation[];
     warnings: string[];
+    _plannerDiag?: any;
 }
 
 export interface AggregatedAssignment {
@@ -570,6 +590,16 @@ export interface AdjustPlanSimpleRequest {
     originalAssignments?: WorkerTask[]; // For stateless/ephemeral plans
     addedTasks?: Task[]; // New tasks to insert into plan
     removedTaskIds?: string[]; // Tasks to remove entirely
+    enforceDepartmentMatch?: boolean; // When true, workers only assigned to same-department tasks
+    taskInterruptionWindows?: TaskInterruptionWindow[]; // Time windows when tasks are blocked/reduced
+}
+
+/** Time window during which a task cannot be worked (or has reduced crew) */
+export interface TaskInterruptionWindow {
+    taskId: string;
+    startDate: string;   // ISO 8601
+    endDate?: string;    // null = blocked indefinitely from startDate
+    maxWorkersDuringInterruption?: number; // 0/null = fully blocked, >0 = reduced crew
 }
 
 export interface TaskLaborUpdate {
@@ -671,3 +701,89 @@ export interface InterruptionResponse {
     affectedTaskIds: string[];
 }
 
+
+// ============================================
+// PHASE 3: Production Plan Preview (Swift Client)
+// ============================================
+
+
+// ============================================
+// PHASE 3: Production Plan Preview (Swift Client)
+// ============================================
+
+// ============================================
+// PHASE 3: Production Plan Preview (Swift Client)
+// ============================================
+
+export interface DepartmentDto {
+    id: string; // UUID
+}
+
+export interface TravelerDto {
+    id: string; // UUID
+}
+
+export interface ProductionIssueDto {
+    id: string; // UUID
+    description?: string;
+}
+
+export interface WorkerDto {
+    id: string; // UUID
+    department: DepartmentDto;
+    name?: string; // Optional helper
+}
+
+export interface TaskDto {
+    id: string; // UUID
+    department: DepartmentDto;
+    traveler: TravelerDto;
+    issues?: ProductionIssueDto[];
+    name?: string; // Helper
+    clockTime?: number; // Helper
+    estimatedTotalLaborHours?: number; // Helper
+}
+
+export interface WorkerTaskDto {
+    id: string; // UUID
+    workerId: string | null;
+    taskId: string | null;
+    startDate: string; // ISO
+    endDate: string;   // ISO
+}
+
+export interface DeficitTaskDto {
+    id: string; // UUID
+    taskId: string | null;
+    deficitHours: number;
+}
+
+export interface ShiftDto {
+    id: string; // UUID
+    startTime: number; // TimeInterval
+    endTime: number;   // TimeInterval
+    weekDayOrdinal: number; // Int
+}
+
+export interface ProductionPlanDto {
+    id: string; // UUID
+    startDate: string;
+    endDate: string;
+    productionPlanShifts: ProductionPlanShiftDto[];
+}
+
+export interface ProductionPlanShiftDto {
+    id: string; // UUID
+    // plan: ProductionPlanDto; // Circular reference handled by client or use planId
+    planId?: string;
+    shift: ShiftDto;
+    workerTasks: WorkerTaskDto[];
+    deficitTasks: DeficitTaskDto[];
+}
+
+export interface PlanPreviewRequest {
+    tasks: TaskDto[];
+    productionPlanShifts: ProductionPlanShiftDto[];
+    startTime: string;
+    endTime: string;
+}
